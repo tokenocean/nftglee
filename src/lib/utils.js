@@ -29,6 +29,14 @@ const publicPages = [
   "activate",
 ];
 
+const royaltyRecipientSystemType = "system";
+const royaltyRecipientIndividualType = "individual";
+
+const royaltyRecipientTypes = {
+  [royaltyRecipientSystemType]: "System",
+  [royaltyRecipientIndividualType]: "Individual",
+};
+
 const addressUser = (a) =>
   get(addresses) &&
   get(addresses).find((u) => u.address === a || u.multisig === a);
@@ -243,6 +251,17 @@ const etag = async (o) => {
 
 const dev = import.meta.env.DEV;
 
+function post(endpoint, data) {
+	return fetch(endpoint, {
+		method: 'POST',
+		credentials: 'include',
+		body: JSON.stringify(data || {}),
+		headers: {
+			'Content-Type': 'application/json'
+		}
+	});
+}
+
 export {
   addressLabel,
   addressUser,
@@ -270,6 +289,9 @@ export {
   val,
   validateEmail,
   publicPages,
+  royaltyRecipientSystemType,
+  royaltyRecipientIndividualType,
+  royaltyRecipientTypes,
 };
 
 // Needed because build will fail with import.meta.env inside script tags
