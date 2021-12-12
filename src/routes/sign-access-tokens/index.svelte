@@ -4,7 +4,7 @@
   import psbts from "$lib/psbts";
   import { requirePassword } from "$lib/auth";
   import { info } from "$lib/utils";
-  import { sign } from "$lib/wallet";
+  import { sign, requestSignature } from "$lib/wallet";
   import { query } from "$lib/api";
 
   let sleep = (n) => new Promise((r) => setTimeout(r, n));
@@ -29,7 +29,7 @@
         query(updateArtwork, {
           artwork: { list_price_tx: $psbt.toBase64() },
           asset,
-        });
+        }).then(console.log).catch(console.log);
       } catch (e) {
         console.log(`Couldn't get server signature: ${e.message}`);
       }
