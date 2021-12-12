@@ -5,11 +5,10 @@
   import { requirePassword } from "$lib/auth";
   import { info } from "$lib/utils";
   import { sign } from "$lib/wallet";
-  import { updateArtwork } from "$queries/artworks";
   import { query } from "$lib/api";
 
   let sleep = (n) => new Promise((r) => setTimeout(r, n));
-  let query = `mutation ($artwork: artworks_set_input!, $asset: String!) {
+  let updateArtwork = `mutation ($artwork: artworks_set_input!, $asset: String!) {
     update_artworks(where: {asset: {_eq: $asset}}, _set: $artwork) {
       id
     }
