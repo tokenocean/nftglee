@@ -10,7 +10,7 @@ export const edition = writable();
 export const error = writable();
 export const fee = writable(100);
 export const filterCriteria = writable({
-  listPrice: false,
+  listPrice: true,
   openBid: false,
   ownedByCreator: false,
   hasSold: false,

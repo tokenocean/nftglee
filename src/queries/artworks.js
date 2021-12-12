@@ -68,7 +68,7 @@ export const getFeatured = `query {
 }`;
 
 export const getArtworks = `query($where: artworks_bool_exp!, $limit: Int, $offset: Int) {
- artworks(where: $where, limit: $limit, offset: $offset, order_by: [{created_at: desc}]) {
+ artworks(where: $where, limit: $limit, offset: $offset, order_by: [{edition: asc, created_at: asc}]) {
     ${fields}
     tags {
       tag
