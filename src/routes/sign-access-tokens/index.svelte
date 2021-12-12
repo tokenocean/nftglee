@@ -10,7 +10,9 @@
   let sleep = (n) => new Promise((r) => setTimeout(r, n));
   let updateArtwork = `mutation ($artwork: artworks_set_input!, $asset: String!) {
     update_artworks(where: {asset: {_eq: $asset}}, _set: $artwork) {
-      id
+      returning {
+        id
+      } 
     }
   }`;
 
