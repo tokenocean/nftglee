@@ -23,6 +23,7 @@
   let percent;
   let url;
   let hidden;
+  let width;
 
   let files = [];
 
