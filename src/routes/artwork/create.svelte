@@ -1,5 +1,5 @@
 <script>
-  const baseUrl = import.meta.env.VITE_BASE_URL
+  import { baseUrl } from '$lib/utils';
   import Fa from "svelte-fa";
   import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
   import { page } from "$app/stores";

@@ -1,5 +1,5 @@
 <script>
-  const baseUrl = import.meta.env.VITE_BASE_URL
+  import { baseUrl } from '$lib/utils';
   export let user = undefined;
   export let src = undefined;
   export let overlay = undefined;

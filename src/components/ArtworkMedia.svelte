@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import Fa from "svelte-fa";
   import { faVolumeUp, faVolumeMute } from "@fortawesome/free-solid-svg-icons";
-  const baseUrl = import.meta.env.VITE_BASE_URL
+  import { baseUrl } from '$lib/utils';
 
   export let artwork;
   export let showDetails;

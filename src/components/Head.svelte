@@ -1,6 +1,6 @@
 <script>
   import { art } from "$lib/store";
-  const baseUrl = import.meta.env.VITE_BASE_URL
+  import { baseUrl } from '$lib/utils';
 
 </script>
 

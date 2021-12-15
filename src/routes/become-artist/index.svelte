@@ -14,7 +14,7 @@
   import upload from "$lib/upload";
   import { updateUser } from "$queries/users";
   import { query } from "$lib/api";
-  const baseUrl = import.meta.env.VITE_BASE_URL
+  import { baseUrl } from '$lib/utils';
 
   let form = {};
   let fileInput;
@@ -27,7 +27,7 @@
   let files = [];
 
   onMount(() => {
-    form = { ...$user };
+    ({ ...form } = $user);
   });
 
   $: width = `width: ${percent}%`;

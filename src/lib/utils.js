@@ -113,7 +113,7 @@ const goto = (path) => {
   if (window) window.history.pushState(null, null, path);
 };
 
-const explorer = import.meta.env.VITE_EXPLORER
+const explorer = import.meta.env.VITE_EXPLORER;
 
 const copy = (v) => {
   let textArea = document.createElement("textarea");
@@ -271,3 +271,6 @@ export {
   validateEmail,
   publicPages,
 };
+
+// Needed because build will fail with import.meta.env inside script tags
+export const baseUrl = import.meta.env.VITE_BASE_URL;
