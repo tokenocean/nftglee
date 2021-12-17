@@ -4,11 +4,7 @@ steps:
   args: [ 'build', '-t', 'gcr.io/coinos-326717/github.com/tokenocean/nftglee:staging', '.' ]
 
 - id: 'deploy to k8s'
-  name: 'gcr.io/cloud-builders/gcloud'
-  entrypoint: 'sh'
-  args:
-    - '-c'
-    - |
-      kubectl patch deployment nftglee-staging -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"date\":\"`date +'%s'`\"}}}}}"
+  name: 'gcr.io/cloud-builders/kubectl'
+  args: ['patch', 'deployment', 'nftglee-staging', '-p', "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"date\":\"`date +'%s'`\"}}}}}"]
 
 images: ['gcr.io/coinos-326717/github.com/tokenocean/nftglee:staging']
