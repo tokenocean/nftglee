@@ -6,5 +6,8 @@ steps:
 - id: 'deploy to k8s'
   name: 'gcr.io/cloud-builders/kubectl'
   args: ['patch', 'deployment', 'nftglee-staging', '-p', "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"date\":\"`date +'%s'`\"}}}}}"]
+  env:
+    - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
+    - 'CLOUDSDK_CONTAINER_CLUSTER=nftglee-staging-cluster'
 
 images: ['gcr.io/coinos-326717/github.com/tokenocean/nftglee:staging']
