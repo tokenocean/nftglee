@@ -88,8 +88,7 @@
     let result = await pub($token)
       .post({
         query: getArtworks(),
-        // order_by: [$order_by],
-        variables: { limit: 12, offset, where },
+        variables: { limit: 12, offset, where, order_by },
       })
       .json();
 

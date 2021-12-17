@@ -68,10 +68,11 @@ export const getFeatured = `query {
   }
 }`;
 
-// TODO: needs feature fix on order_by: [{created_at: desc}]
 export const getArtworks =
-  () => `query($where: artworks_bool_exp!, $limit: Int, $offset: Int) {
- artworks(where: $where, limit: $limit, offset: $offset, distinct_on: [edition_id, hideable_hash]) {
+  () => `query($where: artworks_bool_exp!, $limit: Int, $offset: Int, $order_by: artworks_order_by!) {
+ artworks(where: $where, limit: $limit, offset: $offset, 
+          distinct_on: [edition_id, hideable_hash],
+          order_by: [{edition_id: desc}, {hideable_hash: desc}, {edition: asc}, $order_by]) {
     ${fields}
     is_locked
     tags {
