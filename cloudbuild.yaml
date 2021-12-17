@@ -1,8 +1,7 @@
 steps:
 - id: 'build docker image'
   name: 'gcr.io/cloud-builders/docker'
-  args:
-    - 'build -t gcr.io/coinos-326717/github.com/tokenocean/nftglee:staging .'
+  args: [ 'build', '-t', 'gcr.io/coinos-326717/github.com/tokenocean/nftglee:staging', '.' ]
 
 - id: 'deploy to k8s'
   name: 'gcr.io/cloud-builders/gcloud'
