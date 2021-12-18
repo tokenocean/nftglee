@@ -12,6 +12,4 @@ return NEW;
 END;
 $$;
 
-alter function trigger_set_hideable_hash() owner to postgres;
-
 CREATE TRIGGER trigger_set_hideable_hash BEFORE UPDATE ON public.artworks FOR EACH ROW EXECUTE FUNCTION public.trigger_set_hideable_hash();
