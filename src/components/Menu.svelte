@@ -85,12 +85,12 @@
 
 <div class="flex justify-between items-center menu relative">
   <a href="https://www.nftglee.com/about-us/"><button on:click={toggle}>About Us</button></a>
-  <a href="https://www.nftglee.com/bit-bot-community/"><button on:click={toggle}>New Drops</button></a>
+  <a href="https://www.nftglee.com/glee/"><button on:click={toggle}>New Drops</button></a>
   <a href="/market"><button on:click={toggle}>Marketplace</button></a>
   <a href="https://www.nftglee.com/goldenwhalepass/"><button
       on:click={toggle}>Our Work</button></a>
   {#if $user}
-    <a href="/contact"><button on:click={toggle}>Contact Us</button></a>
+    <a href="https://www.nftglee.com/contact-us-4/"><button on:click={toggle}>Contact Us</button></a>
     {#if $user.is_admin}
       <a href="/admin"><button on:click={toggle}>Admin</button></a>
     {/if}

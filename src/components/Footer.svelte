@@ -2,7 +2,7 @@
   <div class="container footer mx-auto flex flex-wrap text-white pt-12">
     <div
       class="flex flex-col text-sm w-full lg:w-2/4 mb-10 order-last lg:order-first">
-      <a href="https://www.nftglee.com/"><img src="/logo-white.svg" alt="logo" class="w-48" /></a>
+      <a href="https://www.nftglee.com/"><img src="/nftglee_white.png" alt="logo" class="w-48" /></a>
       <p class="mt-4">@2021 NFTglee</p>
     </div>
     <div class="w-full lg:w-1/4 mb-10">
@@ -11,7 +11,7 @@
         <li class="mb-2"><a href="https://www.facebook.com/nftglee/" target="_blank">Facebook</a></li>
         <li class="mb-2"><a href="https://twitter.com/NFT_glee" target="_blank">Twitter</a></li>
         <li class="mb-2"><a href="https://www.instagram.com/nft_glee/" target="_blank">Instagram</a></li>
-        <li class="mb-2"><a href="https://www.nftglee.com/" target="_blank">Blog</a></li>
+        <li class="mb-2"><a href="https://www.nftglee.com/blog-list/" target="_blank">Blog</a></li>
       </ul>
     </div>
     <div class="w-full lg:w-1/4 mb-10">
@@ -28,3 +28,7 @@
     </div>
   </div>
 </div>
+
+  <style>
+  a { color: white }
+</style>

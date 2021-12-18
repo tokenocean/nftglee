@@ -49,7 +49,7 @@
   </nav>
   <div>
     <a href="https://nftglee.com/">
-      <img src="/logo-default.svg" alt="logo" class="w-36 lg:w-56" /></a>
+      <img src="/nftglee.png" alt="logo" class="w-36 lg:w-48 ml-1 -mt-1" /></a>
   </div>
   <a class="mobileSearch" href="/market">
     <Fa icon={faSearch} />
