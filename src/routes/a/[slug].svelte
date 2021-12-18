@@ -22,7 +22,7 @@
     if (result.data) artwork = result.data.artworks[0];
     else console.log(result);
 
-    if(artwork.is_locked) window.history.back()
+    if(result.data && artwork.is_locked) window.history.back()
   };
 </script>
 
