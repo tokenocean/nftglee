@@ -115,6 +115,7 @@ export const getArtworkByAsset = (asset) => `query {
 export const getArtworkBySlug = (slug) => `query {
   artworks(where: {slug : {_eq: "${slug}"}}, limit: 1) {
     ${fields}
+    is_locked
   }
 }`;
 
