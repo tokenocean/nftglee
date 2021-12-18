@@ -70,6 +70,14 @@ computed_fields:
       schema: public
     table_argument: artwork_row
   name: is_sold
+- comment: ""
+  definition:
+    function:
+      name: artwork_is_locked
+      schema: public
+    table_argument: artwork_row
+    session_argument: session_data
+  name: is_locked
 insert_permissions:
 - permission:
     backend_only: false
@@ -102,6 +110,7 @@ insert_permissions:
     - ticker
     - title
     - edition_id
+    - locked_by
     set:
       artist_id: x-hasura-User-Id
       owner_id: x-hasura-User-Id
@@ -140,12 +149,16 @@ select_permissions:
     - transferred_at
     - views
     - edition_id
+    - locked_by
+    - hideable
+    - hideable_hash
     computed_fields:
     - artist_owned
     - favorited
     - last_active
     - num_favorites
     - is_sold
+    - is_locked
     filter:
       _or:
       - asking_asset:
@@ -186,12 +199,16 @@ select_permissions:
     - transferred_at
     - views
     - edition_id
+    - locked_by
+    - hideable
+    - hideable_hash
     computed_fields:
     - artist_owned
     - favorited
     - last_active
     - num_favorites
     - is_sold
+    - is_locked
     filter:
       _or:
       - owner_id:
@@ -236,6 +253,8 @@ update_permissions:
     - royalty
     - title
     - edition_id
+    - hideable
+    - locked_by
     filter:
       owner_id:
         _eq: X-Hasura-User-Id

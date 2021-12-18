@@ -14,6 +14,7 @@
   import upload from "$lib/upload";
   import { updateUser } from "$queries/users";
   import { query } from "$lib/api";
+  import { baseUrl } from '$lib/utils';
 
   let form = {};
   let fileInput;
@@ -22,6 +23,7 @@
   let percent;
   let url;
   let hidden;
+  let width;
 
   let files = [];
 
@@ -38,7 +40,7 @@
     if (file.size < 100000000) previewFile(file);
 
     let hash = await upload(file, progress);
-    let url = preview || `/api/ipfs/${hash}`;
+    let url = preview || `${baseUrl}/ipfs/${hash}`;
     url += "#t=0.5";
 
     files = [

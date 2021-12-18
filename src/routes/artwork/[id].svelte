@@ -179,6 +179,8 @@
   let loading;
   let buyNow = async () => {
     try {
+      // TODO: needs a db trigger to handle this use-case
+      if(artwork.is_locked) throw new Error('Artwork is locked');
       await requirePassword();
       loading = true;
 

@@ -32,6 +32,7 @@ const fields = `
   views
   transferred_at
   is_sold
+  locked_by
   owner {
     id
     username
@@ -67,9 +68,12 @@ export const getFeatured = `query {
   }
 }`;
 
-export const getArtworks = `query($where: artworks_bool_exp!, $limit: Int, $offset: Int) {
- artworks(where: $where, limit: $limit, offset: $offset, order_by: [{edition: asc, created_at: asc}]) {
+export const getArtworks = `query($where: artworks_bool_exp!, $limit: Int, $offset: Int, $order_by: artworks_order_by!) {
+ artworks(where: $where, limit: $limit, offset: $offset, 
+          distinct_on: [edition_id, hideable_hash],
+          order_by: [{edition_id: desc}, {hideable_hash: desc}, {edition: asc}, $order_by]) {
     ${fields}
+    is_locked
     tags {
       tag
     }
@@ -77,7 +81,7 @@ export const getArtworks = `query($where: artworks_bool_exp!, $limit: Int, $offs
 }`;
 
 export const getLatestArtwork = `query {
- artworks(where: {is_sold: {_eq: false}}, limit: 1, order_by: [{created_at: desc, edition: asc}]) {
+ artworks(where: {is_sold: {_eq: false}}, limit: 1, order_by: [{created_at: desc, edition: asc, locked_by: desc}]) {
     ${fields}
     tags {
       tag
@@ -166,6 +170,7 @@ export const updateTags = `mutation insert_tags($tags: [tags_insert_input!]!, $a
 export const getArtwork = (id) => `query {
   artworks_by_pk(id: "${id}") {
     ${fields}
+    is_locked
     tags {
       tag
     },

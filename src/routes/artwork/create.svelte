@@ -1,4 +1,5 @@
 <script>
+  import { baseUrl } from '$lib/utils';
   import Fa from "svelte-fa";
   import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
   import { page } from "$app/stores";
@@ -88,7 +89,7 @@
       return;
     }
 
-    url = `/api/ipfs/${artwork.filename}`;
+    url = `${baseUrl}/ipfs/${artwork.filename}`;
     await tick();
   };
 

@@ -31,7 +31,7 @@
   $: reset($filterCriteria, $sortCriteria);
   let reset = async () => {
     try {
-    where = { _or: [] };
+    where = { _or: [], _and: {is_sold: {_eq: false}, is_locked: {_eq: false}} };
     if ($filterCriteria.listPrice)
       where._or.push({ list_price: { _is_null: false } });
     if ($filterCriteria.openBid) where._or.push({ bid: {} });
@@ -88,14 +88,15 @@
     let result = await pub($token)
       .post({
         query: getArtworks,
-        // order_by: [$order_by],
-        variables: { limit: 12, offset, where },
+        variables: { limit: 12, offset, where, order_by },
       })
       .json();
 
     offset += 12;
 
     if (result.data) {
+      $artworks = [];
+
       $artworks = [
         ...$artworks,
         ...result.data.artworks.filter(
