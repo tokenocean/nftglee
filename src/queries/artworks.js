@@ -70,7 +70,8 @@ export const getFeatured = `query {
 
 export const getArtworks = `query($where: artworks_bool_exp!, $limit: Int, $offset: Int, $order_by: artworks_order_by!) {
  artworks(where: $where, limit: $limit, offset: $offset, 
-          order_by: [$order_by]) {
+          distinct_on: [edition_id, hideable_hash],
+          order_by: [{edition_id: desc}, {hideable_hash: desc}, {edition: asc}, $order_by]) {
     ${fields}
     is_locked
     tags {
