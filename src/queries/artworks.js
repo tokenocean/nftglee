@@ -168,6 +168,12 @@ export const updateTags = `mutation insert_tags($tags: [tags_insert_input!]!, $a
   }
 }`;
 
+export const getArtworkByEditionId = `query($edition_id: uuid!) {
+  artworks(where: { edition_id: { _eq: $edition_id }}) {
+    title
+  }
+}`;
+
 export const getArtwork = (id) => `query {
   artworks_by_pk(id: "${id}") {
     ${fields}

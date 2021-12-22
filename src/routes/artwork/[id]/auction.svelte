@@ -6,7 +6,7 @@
   import { Buffer } from "buffer";
   import { onMount, tick } from "svelte";
   import { page } from "$app/stores";
-  import { getArtwork } from "$queries/artworks";
+  import { getArtwork, getArtworkByEditionId } from "$queries/artworks";
   import { updateArtwork } from "$queries/artworks";
   import { api, query } from "$lib/api";
   import {
@@ -62,29 +62,36 @@
   $: focus(initialized);
 
   let loading = true;
-  let artwork, list_price, royalty, artworks = [], lockedBy;
+  let artwork,
+    list_price,
+    royalty,
+    artworks = [],
+    lockedBy;
   $: setup($token);
 
   let reserve_price;
 
   const loadLockedBy = async () =>
-          lockedBy = artwork.locked_by
-                  && {
-                    value: artwork.locked_by,
-                    label: (await query(getArtwork(artwork.locked_by))).artworks_by_pk?.title
-                    };
+    (lockedBy = artwork.locked_by && {
+      value: artwork.locked_by,
+      label: (
+        await query(getArtworkByEditionId, { edition_id: artwork.locked_by })
+      ).artworks[0]?.title,
+    });
 
   let setup = async (t) => {
     if (!t) return;
 
     try {
       artwork = (await query(getArtwork(id))).artworks_by_pk;
-      artworks = (await query(`query {
+      artworks = (
+        await query(`query {
         artworks(distinct_on: [title]) {
           id
           title
         }
-      }`)).artworks;
+      }`)
+      ).artworks;
       !lockedBy && loadLockedBy();
 
       if (!artwork.asking_asset) artwork.asking_asset = btc;
@@ -330,7 +337,7 @@
           max_extensions,
           reserve_price: sats(artwork.asking_asset, reserve_price),
           royalty,
-          locked_by: lockedBy?.value || null
+          locked_by: lockedBy?.value || null,
         },
         id,
       }).catch(err);
@@ -534,9 +541,7 @@
           </div>
           <div class="mb-6">
             <label for="lockedby">
-              <span class="tooltip">
-                Locked by artwork
-              </span>
+              <span class="tooltip"> Locked by artwork </span>
             </label>
             <Select
               id="lockedby"
@@ -544,9 +549,8 @@
               containerStyles="padding: 2rem; border-radius: 0.5rem; border-color: light-dark; margin-top: 0.5rem;"
               placeholder="-"
               isSearchable="true"
-              items={artworks.map(a => ({label: a.title, value: a.id}))}
-              bind:value={lockedBy}
-            />
+              items={artworks.map( (a) => ({ label: a.title, value: a.edition_id }) )}
+              bind:value={lockedBy} />
           </div>
           <div class="auction-toggle">
             <label for="auction" class="inline-flex items-center">

@@ -31,7 +31,7 @@
   $: reset($filterCriteria, $sortCriteria);
   let reset = async () => {
     try {
-    where = { _or: [], _and: {is_sold: {_eq: false}, is_locked: {_eq: false}} };
+    where = { _or: [], _and: {is_locked: {_eq: false}} };
     if ($filterCriteria.listPrice)
       where._or.push({ list_price: { _is_null: false } });
     if ($filterCriteria.openBid) where._or.push({ bid: {} });
@@ -88,15 +88,11 @@
     let result = await pub($token)
       .post({
         query: getArtworks,
-        variables: { limit: 12, offset, where, order_by },
+        variables: { limit: 1600, offset, where, order_by },
       })
       .json();
 
-    offset += 12;
-
     if (result.data) {
-      $artworks = [];
-
       $artworks = [
         ...$artworks,
         ...result.data.artworks.filter(
@@ -108,12 +104,6 @@
     }
     loading = false;
   };
-
-  onMount(async () => {
-    new IntersectionObserver(async (e) => {
-      if (e[0].isIntersecting && $artworks.length < count) loadArtworks();
-    }).observe(document.querySelector(".footer"));
-  });
 
 </script>
 
