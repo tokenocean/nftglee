@@ -89,10 +89,11 @@
         artworks(distinct_on: [title]) {
           id
           title
+          edition_id
         }
       }`)
       ).artworks;
-      !lockedBy && loadLockedBy();
+      !lockedBy && await loadLockedBy();
 
       if (!artwork.asking_asset) artwork.asking_asset = btc;
       auction_enabled =
