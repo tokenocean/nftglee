@@ -1,4 +1,4 @@
-import { countArtworks, getActive, getLimited } from "$queries/artworks";
+import { countArtworks, getActive } from "$queries/artworks";
 import { hbp } from "$lib/api";
 
 export async function post({ body, locals }) {
