@@ -1,4 +1,6 @@
 import decode from "jwt-decode";
+import { marketFields as artworkFields } from "./artworks";
+import { fields as txFields } from "./transactions";
 
 let fields =
   "id, username, location, bio, email, full_name, website, twitter, instagram, avatar_url, address, multisig, pubkey, is_artist";
@@ -14,22 +16,34 @@ export const getUser = `query {
   }
 }`;
 
-export const getUserById = (id) => `query {
-  users_by_pk (id: "${id}") {
+export const getUserByUsername = `query($username: String!) {
+  users(where: { username: {_eq: $username }}, limit: 1) { 
     ${fields} 
     ${computed}
-  }
-}`;
-
-export const getUserByUsername = (username) => `query {
-  users(where: { username: {_eq: "${username}" }}, limit: 1) { 
-    ${fields} 
-    ${computed}
+    holdings {
+      ${artworkFields} 
+    } 
+    creations {
+      ${artworkFields} 
+    } 
+    offers {
+      transaction {
+        ${txFields}
+        artwork {
+          ${artworkFields}
+        } 
+      }
+    } 
+    favorites {
+      artwork {
+        ${artworkFields}
+      }
+    } 
   }
 }`;
 
 export const getSamples = `query {
-  users(where: { _and: [{ is_artist: { _eq: false }}, { samples: {}}]}) {
+  users(where: { _and: [{ is_artist: { _eq: false }, is_denied: { _eq: false }}, { samples: {}}]}) {
     ${fields} 
     info
     samples {
@@ -75,7 +89,7 @@ export const topArtists = (limit) => `query {
 }`;
 
 export const getUsersAddresses = `query {
-  users {
+  users(order_by: { username: asc }) {
     id
     address
     multisig

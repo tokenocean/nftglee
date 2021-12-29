@@ -30,6 +30,15 @@ array_relationships:
       table:
         name: artworks
         schema: public
+- name: creations
+  using:
+    manual_configuration:
+      column_mapping:
+        id: artist_id
+      insertion_order: null
+      remote_table:
+        name: artworks
+        schema: public
 - name: favorites
   using:
     foreign_key_constraint_on:
@@ -50,6 +59,24 @@ array_relationships:
       column: user_id
       table:
         name: follows
+        schema: public
+- name: holdings
+  using:
+    manual_configuration:
+      column_mapping:
+        id: owner_id
+      insertion_order: null
+      remote_table:
+        name: artworks
+        schema: public
+- name: offers
+  using:
+    manual_configuration:
+      column_mapping:
+        id: owner_id
+      insertion_order: null
+      remote_table:
+        name: offers
         schema: public
 - name: samples
   using:
@@ -92,6 +119,7 @@ select_permissions:
     - id
     - instagram
     - is_artist
+    - is_denied
     - location
     - multisig
     - pubkey
@@ -118,6 +146,7 @@ select_permissions:
     - instagram
     - is_admin
     - is_artist
+    - is_denied
     - location
     - mnemonic
     - multisig
@@ -145,6 +174,7 @@ select_permissions:
     - id
     - instagram
     - is_artist
+    - is_denied
     - location
     - multisig
     - pubkey
@@ -160,9 +190,10 @@ select_permissions:
   role: user
 update_permissions:
 - permission:
-    check: null
+    check: {}
     columns:
     - is_artist
+    - is_denied
     filter: {}
   role: approver
 - permission:

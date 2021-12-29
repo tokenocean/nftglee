@@ -1,7 +1,6 @@
 <script>
   import { Avatar, Search } from "$comp";
   import { show, user, token } from "$lib/store";
-  import { logout } from "$lib/auth";
 
   export let open = false;
   let toggle = () => (open = !open);
@@ -87,7 +86,7 @@
   <a href="https://www.nftglee.com/about-us/"><button on:click={toggle}>About Us</button></a>
   <a href="https://www.nftglee.com/glee/"><button on:click={toggle}>New Drops</button></a>
   <a href="/market"><button on:click={toggle}>Marketplace</button></a>
-  <a href="https://www.nftglee.com/goldenwhalepass/"><button
+  <a href="https://www.nftglee.com/work/"><button
       on:click={toggle}>Our Work</button></a>
   {#if $user}
     <a href="https://www.nftglee.com/contact-us-4/"><button on:click={toggle}>Contact Us</button></a>

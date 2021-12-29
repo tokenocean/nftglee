@@ -1,59 +1,24 @@
 <script>
-  import Fa from "svelte-fa";
-  import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-  import { onMount, tick } from "svelte";
-  import { AcceptOffer, Card } from "$comp";
-  import { snack, prompt, psbt, token } from "$lib/store";
-  import { Psbt } from "liquidjs-lib";
-  import { getOffers } from "$queries/transactions";
-  import { broadcast } from "$lib/wallet";
-  import { goto, val, ticker } from "$lib/utils";
-  import { requirePassword } from "$lib/auth";
-  import { pub } from "$lib/api";
+  import { AcceptOffer, ArtworkMedia, Activity, Card } from "$comp";
+  import { val, ticker } from "$lib/utils";
 
-  let offers = [];
+  export let offers;
+  $: filtered = offers.filter((o) => !o.transaction.accepted);
   let comp;
 
-  onMount(async () => {
-    let result = await pub($token)
-      .post({
-        query: getOffers,
-      })
-      .json();
-
-    if (result.data) offers = result.data.offers;
-    else err(result.errors[0]);
-  });
-
+  let update = () => (filtered = filtered);
 </script>
 
-<style>
-  button {
-    @apply border border-black w-full uppercase text-sm font-bold py-2 px-4 rounded;
-    &:hover {
-      @apply border-secondary;
-    }
-  }
-
-</style>
-
 <AcceptOffer bind:this={comp} />
-<div class="flex flex-wrap px-6">
-  {#each offers as offer}
-    <div class="w-full md:w-1/2 p-4">
-      <Card
-        artwork={offer.transaction.artwork}
-        columns={1}
-        showDetails={false}
-        shadow={false} />
-      <div class="mx-2 whitespace-no-wrap text-center">
-        {val(offer.transaction.artwork.asking_asset, offer.transaction.amount)}
-        {ticker(offer.transaction.artwork.asking_asset)}
-        from @{offer.transaction.artwork.bid[0].user.username}
-        <button on:click={() => comp.accept(offer.transaction)}>Accept</button>
-      </div>
+{#each filtered as offer}
+  <div class="flex flex-wrap">
+    <div class="order-last md:order-first my-auto mx-auto sm:mx-auto p-4">
+      <Activity transaction={offer.transaction} on:accepted={update} />
     </div>
-  {:else}
-    <div class="mx-auto">No offers yet</div>
-  {/each}
-</div>
+    <div class="mx-auto w-full md:w-32">
+      <ArtworkMedia artwork={offer.transaction.artwork} />
+    </div>
+  </div>
+{:else}
+  <div class="col-span-4 mx-auto">No offers yet</div>
+{/each}

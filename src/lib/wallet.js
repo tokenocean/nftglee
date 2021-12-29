@@ -1,7 +1,7 @@
 import { tick } from "svelte";
 import { get } from "svelte/store";
 import { api, electrs, hasura } from "$lib/api";
-import { retry } from "wretch-middlewares";
+// import * as middlewares from "wretch-middlewares";
 import { mnemonicToSeedSync } from "bip39";
 import { fromSeed } from "bip32";
 import { fromBase58 } from "bip32";
@@ -35,14 +35,12 @@ import { requirePassword } from "$lib/auth";
 import { getActiveBids } from "$queries/transactions";
 import { compareAsc, parseISO } from "date-fns";
 
+// const { retry } = middlewares.default || middlewares;
+
 const DUST = 800;
-const satsPerByte = 0.2;
+const satsPerByte = 0.15;
 
-const SERVER_PUBKEY = Buffer.from(
-  "037f2e57d2017e3bf89ac391c95dfe46b3f6ff606cc2a3a04b4d9f043418c3b4bc",
-  "hex"
-);
-
+const serverKey = Buffer.from(import.meta.env.VITE_PUBKEY, "hex");
 const network = networks[import.meta.env.VITE_NETWORK];
 
 const singleAnyoneCanPay =
@@ -88,7 +86,6 @@ export const getBalances = async () => {
   let p = {};
 
   utxos.map((u) => {
-    if (u.asset === btc && u.value < DUST) return;
     if (u.status.confirmed) {
       if (b[u.asset]) b[u.asset] += parseInt(u.value);
       else b[u.asset] = u.value;
@@ -190,7 +187,7 @@ export const multisig = (key) => {
 
   let redeem = payments.p2ms({
     m: 2,
-    pubkeys: [key.pubkey, SERVER_PUBKEY].sort((a, b) =>
+    pubkeys: [key.pubkey, serverKey].sort((a, b) =>
       a.toString("hex").localeCompare(b.toString("hex"))
     ),
     network,
@@ -270,7 +267,7 @@ const splitUp = async (tx) => {
   let offerFee = 150;
 
   let { artwork, id, p, type } = tx;
-  let { royalty, artist_id, owner_id } = artwork;
+  let { has_royalty, royalty_recipients, artist_id, owner_id } = artwork;
   let asset = btc;
   let { ins, outs } = p.data.globalMap.unsignedTx.tx;
   outs = outs.filter((o) => parseAsset(o.asset) === btc);
@@ -332,8 +329,9 @@ const splitUp = async (tx) => {
 
   let totalValue = total - change - offerFee;
   let value = totalValue;
-  if (royalty && artist_id !== owner_id) {
-    value = Math.round((value * 100) / (100 + royalty));
+  if (has_royalty && artist_id !== owner_id) {
+    let totalRoyalty = royalty_recipients.reduce((a, b) => (a += b.amount), 0);
+    value = Math.round((value * 100) / (100 + totalRoyalty));
   }
 
   let input = {
@@ -543,11 +541,47 @@ const addFee = (p) =>
 
 const bumpFee = (v) => fee.set(get(fee) + v);
 
-const isMultisig = ({ royalty, auction_end }) => {
+export const isMultisig = ({ has_royalty, auction_end }) => {
   return !!(
     (auction_end && compareAsc(parseISO(auction_end), new Date()) > 0) ||
-    royalty
+    has_royalty
   );
+};
+
+export const releaseToSelf = async (artwork) => {
+  fee.set(100);
+  let { asset, owner } = artwork;
+
+  let script;
+  try {
+    script = Address.toOutputScript(owner.address, network);
+  } catch (e) {
+    throw new Error("Unrecognized address");
+  }
+
+  let p = new Psbt().addOutput({
+    asset,
+    nonce,
+    script,
+    value: 1,
+  });
+
+  let p2 = Psbt.fromBase64(p.toBase64());
+
+  let construct = async (p) => {
+    await fund(p, multisig(), asset, 1, 1, true);
+    await fund(p, singlesig(), btc, get(fee));
+  };
+
+  await construct(p);
+  addFee(p);
+
+  estimateFee(p);
+  await construct(p2);
+
+  addFee(p2);
+
+  return p2;
 };
 
 export const pay = async (artwork, to, amount) => {
@@ -571,6 +605,8 @@ export const pay = async (artwork, to, amount) => {
     value: amount,
   });
 
+  let total = amount;
+
   let p2 = Psbt.fromBase64(p.toBase64());
 
   let construct = async (p) => {
@@ -586,8 +622,14 @@ export const pay = async (artwork, to, amount) => {
   await construct(p);
   addFee(p);
 
+  let confidential;
+  try {
+    confidential = Address.isConfidential(to);
+  } catch (e) {
+    confidential = false;
+  }
 
-  estimateFee(p, Address.isConfidential(to));
+  estimateFee(p, confidential);
   await construct(p2);
 
   addFee(p2);
@@ -596,7 +638,11 @@ export const pay = async (artwork, to, amount) => {
 };
 
 const estimateFee = (p, isConfidential = false) => {
-  let size = estimateTxSize(p.data.inputs.length, p.data.outputs.length, isConfidential);
+  let size = estimateTxSize(
+    p.data.inputs.length,
+    p.data.outputs.length,
+    isConfidential
+  );
   fee.set(Math.ceil(size * satsPerByte));
 };
 
@@ -619,18 +665,20 @@ export const cancelSwap = async (artwork) => {
   return p;
 };
 
-export const sign = (sighash = 1) => {
+export const sign = (sighash) => {
   let p = get(psbt);
 
   let { privkey } = keypair();
 
-  p.data.inputs.map((input, i) => {
+  p.data.inputs.map(({ sighashType }, i) => {
     try {
       p = p
-        .signInput(i, ECPair.fromPrivateKey(privkey), [sighash])
+        .signInput(i, ECPair.fromPrivateKey(privkey), [
+          sighash || sighashType || 1,
+        ])
         .finalizeInput(i);
     } catch (e) {
-      console.log("failed to sign", e.message, input, i, sighash);
+      // console.log("failed to sign", e.message, i);
     }
   });
 
@@ -642,10 +690,10 @@ export const broadcast = (disableRetries = false) => {
   let tx = get(psbt).extractTransaction();
   let hex = tx.toHex();
   let middlewares = [
-    retry({
-      delayTimer: 6000,
-      maxAttempts: 3,
-    }),
+    // retry({
+    //   delayTimer: 6000,
+    //   maxAttempts: 3,
+    // }),
   ];
 
   if (disableRetries) middlewares = [];
@@ -667,14 +715,15 @@ export const executeSwap = async (artwork) => {
     list_price_tx,
     asset,
     asking_asset,
-    royalty,
+    has_royalty,
+    royalty_recipients,
     artist: { address },
     artist_id,
     owner_id,
   } = artwork;
   let p = Psbt.fromBase64(list_price_tx);
   let out = singlesig();
-  let script = (royalty ? multisig() : singlesig()).output;
+  let script = (has_royalty ? multisig() : singlesig()).output;
   let total = list_price;
 
   fee.set(100);
@@ -686,16 +735,20 @@ export const executeSwap = async (artwork) => {
     value: 1,
   });
 
-  if (royalty && artist_id !== owner_id) {
-    let value = Math.round((total * royalty) / 100);
-    total += value;
+  if (artist_id !== owner_id && has_royalty) {
+    for (let i = 0; i < royalty_recipients.length; i++) {
+      const element = royalty_recipients[i];
 
-    p.addOutput({
-      asset: asking_asset,
-      value,
-      nonce,
-      script: Address.toOutputScript(address, network),
-    });
+      const recipientValue = Math.round((list_price * element.amount) / 100);
+      total += recipientValue;
+
+      p.addOutput({
+        asset: asking_asset,
+        value: recipientValue,
+        nonce,
+        script: Address.toOutputScript(element.address, network),
+      });
+    }
   }
 
   let p2 = Psbt.fromBase64(p.toBase64());
@@ -906,7 +959,7 @@ export const createSwap = async (artwork, amount, tx) => {
         redeemScript: singlesig().redeem.output,
         sighashType: singleAnyoneCanPay,
       });
-    } 
+    }
   } else {
     await fund(
       p,
@@ -925,7 +978,13 @@ export const createOffer = async (artwork, amount, input, f = 150) => {
   fee.set(f);
   amount = parseInt(amount);
 
-  let { asking_asset: asset, artist_id, royalty, owner_id } = artwork;
+  let {
+    asking_asset: asset,
+    artist_id,
+    has_royalty,
+    royalty_recipients,
+    owner_id,
+  } = artwork;
 
   if (asset === btc && amount < DUST)
     throw new Error(`Minimum bid is ${(DUST / 100000000).toFixed(8)} L-BTC`);
@@ -942,17 +1001,23 @@ export const createOffer = async (artwork, amount, input, f = 150) => {
   let total = parseInt(amount);
   let pubkey = fromBase58(artwork.owner.pubkey, network).publicKey;
 
-  if (royalty) {
-    if (royalty && artist_id !== owner_id) {
-      let value = Math.round((total * royalty) / 100);
-      total += value;
+  if (has_royalty) {
+    if (artist_id !== owner_id) {
+      for (let i = 0; i < royalty_recipients.length; i++) {
+        const element = royalty_recipients[i];
 
-      p.addOutput({
-        asset,
-        value,
-        nonce,
-        script: Address.toOutputScript(artwork.artist.address, network),
-      });
+        const recipientValue = Math.round(
+          (parseInt(amount) * element.amount) / 100
+        );
+        total += recipientValue;
+
+        p.addOutput({
+          asset,
+          value: recipientValue,
+          nonce,
+          script: Address.toOutputScript(element.address, network),
+        });
+      }
     }
 
     p.addOutput({

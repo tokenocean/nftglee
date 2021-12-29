@@ -44,7 +44,7 @@ setInterval(async () => {
     const query = `query {
       artworks(where: { _and: [
           { auction_end: { _lte: "${formatISO(new Date())}"}}, 
-          { auction_release_tx: { _is_null: false }}
+          { auction_tx: { _is_null: false }}
         ]}) {
         id
         title
@@ -53,7 +53,7 @@ setInterval(async () => {
         filetype
         reserve_price
         asking_asset
-        royalty
+        has_royalty
         auction_end
         transferred_at
         list_price_tx
@@ -81,22 +81,38 @@ setInterval(async () => {
       } 
     }`;
 
-    let { artworks } = (await hasura.post({ query }).json()).data;
+    let res = await hasura.post({ query }).json();
+    let { data, errors } = res;
+    if (errors) throw new Error(errors[0].message);
+    let { artworks } = data;
 
     for (let i = 0; i < artworks.length; i++) {
       let artwork = artworks[i];
-      let bid = artwork.bid[0];
+      let { bid } = artwork;
+
+      hasura
+        .post({
+          query: close,
+          variables: {
+            id: artwork.id,
+            artwork: {
+              auction_start: null,
+              auction_end: null,
+            },
+          },
+        })
+        .json()
+        .catch(console.log);
 
       console.log("finalizing auction for", artwork.slug);
       console.log("reserve price", artwork.reserve_price);
 
       try {
         if (
-          !bid.psbt ||
-          compareAsc(
-            parseISO(bid.created_at),
-            parseISO(artwork.auction_end)
-          ) > 0 || bid.amount < artwork.reserve_price
+          !(bid && bid.psbt) ||
+          compareAsc(parseISO(bid.created_at), parseISO(artwork.auction_end)) >
+            0 ||
+          bid.amount < artwork.reserve_price
         )
           throw new Error("no bid");
 
@@ -126,7 +142,7 @@ setInterval(async () => {
         console.log("released to high bidder");
       } catch (e) {
         console.log("couldn't release to bidder,", e.message);
-        if (artwork.royalty) continue;
+        if (artwork.has_royalty) continue;
 
         try {
           let psbt = await sign(artwork.auction_release_tx);
@@ -134,8 +150,7 @@ setInterval(async () => {
 
           console.log("released to current owner");
 
-          let result =  
-          await hasura
+          let result = await hasura
             .post({
               query: releaseQuery,
               variables: {
@@ -150,23 +165,10 @@ setInterval(async () => {
             })
             .json();
 
-          if (result.errors && result.errors.length) throw new Error(JSON.stringify(result.errors[0].message));
+          if (result.errors && result.errors.length)
+            throw new Error(JSON.stringify(result.errors[0].message));
         } catch (e) {
           console.log("problem releasing", e);
-
-          hasura
-            .post({
-              query: close,
-              variables: {
-                id: artwork.id,
-                artwork: {
-                  auction_start: null,
-                  auction_end: null,
-                },
-              },
-            })
-            .json()
-            .catch(console.log);
         }
       }
     }

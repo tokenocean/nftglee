@@ -1,14 +1,29 @@
+<script context="module">
+  import { post } from "$lib/api";
+  export async function load({ fetch }) {
+    const r = await post("/artworks.json", {}, fetch).json();
+
+    return {
+      maxage: 720,
+      props: {
+        total: r.total,
+        initialArtworks: r.artworks,
+      },
+    };
+  }
+</script>
+
 <script>
-  import { onMount } from "svelte";
   import { ProgressLinear } from "$comp";
   import Fa from "svelte-fa";
   import { faSlidersH } from "@fortawesome/free-solid-svg-icons";
   import {
     artworks,
-    filterCriteria,
+    filterCriteria as fc,
+    offset,
     results,
     show,
-    sortCriteria,
+    sortCriteria as sc,
     token,
     user,
   } from "$lib/store";
@@ -17,95 +32,99 @@
   import Filter from "./_filter.svelte";
   import Sort from "./_sort.svelte";
   import { requirePassword } from "$lib/auth";
-  import { pub } from "$lib/api";
-  import { countArtworks, getArtworks } from "$queries/artworks";
+  import { compareAsc, differenceInMilliseconds, parseISO } from "date-fns";
+  import { browser } from "$app/env";
 
-  export let showFilters;
-  let filtered = [];
+  export let total;
+  export let initialArtworks = [];
 
-  let loading;
-  let count = 0;
-  let offset = 0;
-  let where, order_by;
+  let showFilters;
+  let filtered = [...initialArtworks];
 
-  $: reset($filterCriteria, $sortCriteria);
-  let reset = async () => {
+  $: filtersUpdated($fc, $sc);
+  let filtersUpdated = () => {
+    $offset = 0;
+    loadMore();
+  };
+
+  let loadMore = async () => {
+    if (!browser) return;
     try {
-    where = { _or: [], _and: {is_locked: {_eq: false}} };
-    if ($filterCriteria.listPrice)
-      where._or.push({ list_price: { _is_null: false } });
-    if ($filterCriteria.openBid) where._or.push({ bid: {} });
-    if ($filterCriteria.ownedByCreator)
-      where._or.push({ artist_owned: { _eq: true } });
-    if ($filterCriteria.hasSold)
-      where._or.push({ transferred_at: { _is_null: false } });
+      let where = {};
+      if ($sc === "ending_soon")
+        where.auction_end = { _is_null: false, _gte: new Date() };
+      if ($fc.listPrice || ["lowest", "highest"].includes($sc)) {
+        $fc.listPrice = true;
+        where.list_price = { _is_null: false, _gt: 0 };
+      }
+      if ($fc.openBid) where.bid_id = { _is_null: false };
+      if ($fc.ownedByCreator) where.artist_owned = { _eq: true };
+      if ($fc.hasSold) where.transferred_at = { _is_null: false };
 
-      if (!where._or.length) delete where._or;
+      let order_by = {
+        newest: { created_at: "desc" },
+        oldest: { created_at: "asc" },
+        highest: { list_price: "desc" },
+        lowest: { list_price: "asc" },
+        ending_soon: { auction_end: "asc" },
+        most_viewed: { views: "desc" },
+      }[$sc];
 
-      order_by = {
-        newest: {
-          created_at: "desc",
-        },
-        oldest: {
-          created_at: "asc",
-        },
-        highest: {
-          list_price: "desc_nulls_last",
-        },
-        lowest: {
-          list_price: "asc_nulls_last",
-        },
-        ending_soon: {
-          auction_end: "asc_nulls_last",
-        },
-        most_viewed: {
-          views: "desc",
-        },
-      }[$sortCriteria];
+      const r = await post(
+        "/artworks.json",
+        { offset: $offset, order_by, where },
+        fetch
+      ).json();
 
-      let result = await pub($token)
-        .post({
-          query: countArtworks,
-          variables: { order_by, where },
-        })
-        .json();
-
-      if (result.data) count = result.data.artworks_aggregate.aggregate.count;
-      else err(result.errors[0]);
-
-      $artworks = [];
-      offset = 0;
-      loadArtworks();
+      filtered = [...r.artworks];
+      total = r.total;
     } catch (e) {
-      err(e);
+      console.log(e);
     }
   };
-
-  const loadArtworks = async () => {
-    loading = true;
-
-    // await new Promise((r) => setTimeout(r, 500));
-    let result = await pub($token)
-      .post({
-        query: getArtworks,
-        variables: { limit: 1600, offset, where, order_by },
-      })
-      .json();
-
-    if (result.data) {
-      $artworks = [
-        ...$artworks,
-        ...result.data.artworks.filter(
-          (a) => !$artworks.find((b) => a.id === b.id)
-        ),
-      ];
-    } else {
-      err(result.errors[0]);
-    }
-    loading = false;
-  };
-
 </script>
+
+<Results />
+
+<div
+  class="container mx-auto flex flex-wrap flex-col-reverse md:flex-row sm:justify-between mt-10 md:mt-20"
+>
+  <h2 class="md:mb-0">Market</h2>
+  {#if $user && $user.is_artist}
+    <a href="/a/create" class="primary-btn" data-cy="new-artwork"
+      >Submit a new artwork</a
+    >
+  {/if}
+</div>
+<div class="container mx-auto mt-10">
+  <div class="flex items-center search">
+    <Search />
+  </div>
+</div>
+<div class="container mx-auto">
+  <div
+    class="flex flex-wrap justify-between items-center md:flex-row-reverse controls"
+  >
+    <div
+      class="w-full lg:w-auto mb-3 flex filter-container justify-between pt-10 xl:py-10 xl:pb-30 mt-50"
+    >
+      <div class="switch">
+        <div
+          class="flex cursor-pointer lg:hidden mb-8 font-bold"
+          on:click={() => (showFilters = !showFilters)}
+        >
+          <div>FILTERS</div>
+          <div class="my-auto">
+            <Fa icon={faSlidersH} class="ml-3" />
+          </div>
+        </div>
+      </div>
+      <Sort />
+    </div>
+    <Filter {showFilters} />
+  </div>
+  <Gallery bind:filtered bind:total bind:loadMore />
+</div>
 
 <style>
   @media only screen and (max-width: 1023px) {
@@ -125,45 +144,4 @@
       margin-bottom: 30px;
     }
   }
-
 </style>
-
-<Results />
-
-<div
-  class="container mx-auto flex flex-wrap flex-col-reverse md:flex-row sm:justify-between mt-10 md:mt-20">
-  <h2 class="md:mb-0">Market</h2>
-  {#if $user && $user.is_artist}
-    <a href="/artwork/create" class="primary-btn">Submit a new artwork</a>
-  {/if}
-</div>
-<div class="container mx-auto mt-10">
-  <div class="flex items-center search">
-    <Search />
-  </div>
-</div>
-<div class="container mx-auto">
-  <div
-    class="flex flex-wrap justify-between items-center md:flex-row-reverse controls">
-    <div
-      class="w-full lg:w-auto mb-3 flex filter-container justify-between pt-10 xl:py-10 xl:pb-30 mt-50">
-      <div class="switch">
-        <div
-          class="flex cursor-pointer lg:hidden mb-8 font-bold"
-          on:click={() => (showFilters = !showFilters)}>
-          <div>FILTERS</div>
-          <div class="my-auto">
-            <Fa icon={faSlidersH} class="ml-3" />
-          </div>
-        </div>
-      </div>
-      <Sort bind:filtered />
-    </div>
-    <Filter bind:filtered {showFilters} />
-  </div>
-  <Gallery artworks={filtered} {count} />
-
-  {#if loading}
-    <ProgressLinear />
-  {/if}
-</div>
