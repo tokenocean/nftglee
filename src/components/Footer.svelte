@@ -9,7 +9,7 @@
       <p class="mt-4">@2021 NFTglee</p>
     </div>
     <div class="w-full lg:w-1/4 mb-10">
-      <h4 class="font-bold mb-4">Follow US</h4>
+      <h4 class="font-bold mb-4">Join Us</h4>
       <ul class="list-none">
         <li class="mb-2">
           <a href="https://www.facebook.com/nftglee/" target="_blank"
@@ -25,7 +25,7 @@
           >
         </li>
         <li class="mb-2">
-          <a href="https://www.nftglee.com/blog-list/" target="_blank">Blog</a>
+          <a target="_blank" href={branding.urls.external.blog}>Blog</a>
         </li>
       </ul>
     </div>

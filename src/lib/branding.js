@@ -10,7 +10,7 @@ const BRANDING = {
     external: {
       twitter: "https://twitter.com/nft_glee",
       telegram: "https://t.me/nft_glee",
-      blog: "https://blog.nftglee.com/",
+      blog: "https://www.nftglee.com/blog-list/",
     },
   },
 
