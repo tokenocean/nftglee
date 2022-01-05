@@ -1,29 +1,37 @@
 <script>
-  import { art } from "$lib/store";
-  import { baseUrl } from '$lib/utils';
-
+  import { dev } from "$lib/utils";
+  export let metadata;
 </script>
 
 <svelte:head>
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:site" content="@nft_glee" />
-  <meta name="twitter:creator" content="@nft_glee" />
+  <title>{metadata.title}</title>
+  <meta property="og:title" content={metadata.title} />
+  <meta name="twitter:title" content={metadata.title} />
 
-  {#if $art}
-    <meta property="og:title" content={`NFT Glee - ${$art.title}`} />
-    <meta property="og:image" content={`${baseUrl}/ipfs/${$art.filename}`} />
-    <meta property="og:url" content={`https://bid.nftglee.com/a/${$art.slug}`} />
-    <meta name="twitter:title" content={`NFT Glee - ${$art.title}`} />
-    <meta name="twitter:image" content={`${baseUrl}/ipfs/${$art.filename}`} />
-  {:else}
-    <meta property="og:title" content="NFT Glee" />
-    <meta property="og:image" content="https://bid.nftglee.com/nftglee.png" />
-    <meta property="og:url" content="https://bid.nftglee.com/" />
-    <meta name="twitter:title" content="NFT Glee" />
-    <meta name="twitter:image" content="https://bid.nftglee.com/nftglee.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:description" content={metadata.description} />
+  <meta name="description" content={metadata.description} />
+
+  <meta name="keywords" content={metadata.keywords} />
+
+  {#if metadata.image}
+    <meta property="og:image" content={metadata.image} />
+    <meta name="twitter:image" content={metadata.image} />
   {/if}
 
-<link rel="preconnect" href="https://fonts.gstatic.com">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&display=swap" rel="stylesheet">
-</svelte:head>
+  {#if metadata.video}
+    <meta property="og:video" content={metadata.video} />
+    <meta name="twitter:video" content={metadata.video} />
+  {/if}
 
+  <meta property="og:url" content={metadata.url} />
+  <meta name="twitter:card" content={metadata.twitter.card} />
+  <meta name="twitter:site" content={metadata.twitter.site} />
+  <meta name="twitter:creator" content={metadata.twitter.creator} />
+
+  <link rel="preconnect" href="https://fonts.gstatic.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&display=swap"
+    rel="stylesheet"
+  />
+</svelte:head>

@@ -1,6 +1,7 @@
 const { keypair, parse, sign } = require("./wallet");
 const { hasura } = require("./api");
 const { parseISO, isWithinInterval } = require("date-fns");
+const { address: Address } = require("liquidjs-lib");
 
 const wretch = require("wretch");
 const fetch = require("node-fetch");
@@ -13,7 +14,14 @@ const query = `
       id 
       asset
       asking_asset
-      royalty
+      has_royalty
+      royalty_recipients {
+        id
+        asking_asset
+        amount
+        address
+        name
+      }
       auction_start
       auction_end
       list_price
@@ -55,7 +63,7 @@ app.post("/sign", auth, async (req, res) => {
 });
 
 const check = async (psbt) => {
-  const [txid, outputs] = parse(psbt);
+  const [txid, inputs, outputs] = await parse(psbt);
 
   const multisig = (
     await hasura.post({ query: allMultisig }).json().catch(console.log)
@@ -70,7 +78,8 @@ const check = async (psbt) => {
   artworks.map(
     ({
       asset,
-      royalty,
+      has_royalty,
+      royalty_recipients,
       artist,
       owner,
       list_price,
@@ -79,30 +88,60 @@ const check = async (psbt) => {
       auction_end,
     }) => {
       let outs = outputs.filter((o) => o.asset === asking_asset);
-      let toArtist = outs
-        .filter(
-          (o) => o.address === artist.address || o.address === artist.multisig
-        )
+
+      let toRoyaltyRecipients = outs
+        .filter((o) => {
+          const recipientsWithOuts = royalty_recipients.find((recipient) => {
+            let unconfidential;
+            try {
+              unconfidential = Address.fromConfidential(recipient.address)
+                .unconfidentialAddress;
+            } catch (e) {}
+
+            return (
+              recipient.address === o.address || unconfidential === o.address
+            );
+          });
+          return !!recipientsWithOuts;
+        })
         .reduce((a, b) => (a += b.value), 0);
 
-      let toOwner = outs
-        .filter(
-          (o) => o.address === owner.address || o.address === owner.multisig
-        )
-        .reduce((a, b) => (a += b.value), 0);
+      let toOwner =
+        outs
+          .filter(
+            (o) => o.address === owner.address || o.address === owner.multisig
+          )
+          .reduce((a, b) => a + parseInt(b.value), 0) -
+        inputs
+          .filter(
+            (o) =>
+              o.asset === asking_asset &&
+              (o.address === owner.address || o.address === owner.multisig)
+          )
+          .reduce((a, b) => a + parseInt(b.value), 0);
 
       if (auction_end) {
         let start = parseISO(auction_start);
         let end = parseISO(auction_end);
 
-        if (toOwner !== list_price && isWithinInterval(new Date(), { start, end }))
+        if (
+          toOwner !== list_price &&
+          isWithinInterval(new Date(), { start, end })
+        )
           throw new Error("Auction underway");
       }
 
-      if (royalty) {
+      if (has_royalty) {
         if (toOwner) {
-          let amountDue = Math.round((toOwner * royalty) / 100);
-          if (toArtist < amountDue && artist.id !== owner.id)
+          let amountDue = 0;
+
+          for (let i = 0; i < royalty_recipients.length; i++) {
+            const element = royalty_recipients[i];
+
+            amountDue += Math.round((toOwner * element.amount) / 100);
+          }
+
+          if (toRoyaltyRecipients < amountDue && artist.id !== owner.id)
             throw new Error("Royalty not paid");
         }
 

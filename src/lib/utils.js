@@ -10,11 +10,11 @@ import {
   titles,
 } from "$lib/store";
 import { goto as svelteGoto } from "$app/navigation";
-import { tick } from "svelte";
 
 const btc = import.meta.env.VITE_BTC;
 const cad = import.meta.env.VITE_CAD;
 const usd = import.meta.env.VITE_USD;
+const host = import.meta.env.VITE_HOST;
 
 const fade = (n, o) => svelteFade(n, { ...o, duration: 50 });
 
@@ -28,6 +28,14 @@ const publicPages = [
   "privacy-policy",
   "activate",
 ];
+
+const royaltyRecipientSystemType = "system";
+const royaltyRecipientIndividualType = "individual";
+
+const royaltyRecipientTypes = {
+  [royaltyRecipientSystemType]: "System",
+  [royaltyRecipientIndividualType]: "Individual",
+};
 
 const addressUser = (a) =>
   get(addresses) &&
@@ -145,6 +153,7 @@ const err = (e) => {
     msg = JSON.parse(msg).message;
   } catch {}
   if (!msg) msg = "An error occurred";
+  if (msg.includes("EPIPE")) return;
   if (msg.includes("Insufficient")) return;
   if (msg.includes("socket")) return;
   if (msg.includes("JWT")) return;
@@ -243,6 +252,25 @@ const etag = async (o) => {
 
 const dev = import.meta.env.DEV;
 
+const linkify = (text) => {
+  var urlRegex =
+    /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gi;
+  return text.replace(urlRegex, function (url) {
+    return '<a href="' + url + '">' + url + "</a>";
+  });
+};
+
+function post(endpoint, data) {
+  return fetch(endpoint, {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(data || {}),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+
 export {
   addressLabel,
   addressUser,
@@ -259,8 +287,11 @@ export {
   fullscreen,
   goto,
   go,
+  host,
   info,
+  linkify,
   pick,
+  post,
   sats,
   kebab,
   ticker,
@@ -270,7 +301,7 @@ export {
   val,
   validateEmail,
   publicPages,
+  royaltyRecipientSystemType,
+  royaltyRecipientIndividualType,
+  royaltyRecipientTypes,
 };
-
-// Needed because build will fail with import.meta.env inside script tags
-export const baseUrl = import.meta.env.VITE_BASE_URL;

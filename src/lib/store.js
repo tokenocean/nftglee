@@ -10,15 +10,18 @@ export const edition = writable();
 export const error = writable();
 export const fee = writable(100);
 export const filterCriteria = writable({
-  listPrice: true,
+  listPrice: false,
   openBid: false,
   ownedByCreator: false,
   hasSold: false,
 });
 export const full = writable();
 export const loading = writable();
+export const loaded = writable({});
 export const locked = writable();
 export const loggedIn = writable();
+export const meta = writable();
+export const offset = writable(0);
 export const password = writable();
 export const pending = writable();
 export const poll = writable([]);

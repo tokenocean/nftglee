@@ -1,9 +1,10 @@
 import { get } from "svelte/store";
 import { token } from "$lib/store";
-const baseUrl = import.meta.env.VITE_BASE_URL;
 
-export default async (file, progress) => {
-  let url = `${baseUrl}/upload`;
+export const supportedTypes = ["jpg", "png", "gif", "mp4"];
+
+export const upload = async (file, progress) => {
+  let url = "/api/upload";
   let formData = new FormData();
   formData.append("file", file);
 

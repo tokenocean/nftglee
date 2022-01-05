@@ -4,8 +4,9 @@ services:
     depends_on:
       - hbp
     container_name: lapp
-    image: asoltys/lnft-server:nftglee
+    image: asoltys/lnft-server
     restart: on-failure
+    command: ["pnpm", "dev"]
     environment:
       SERVER_URL: '${SERVER_URL}'
       HASURA_SECRET:  '${HASURA_GRAPHQL_ADMIN_SECRET}'
@@ -27,6 +28,7 @@ services:
       SMTP_PASS: '${SMTP_PASS}'
       SMTP_SENDER: '${SMTP_SENDER}'
     volumes:
+      - ./app:/app
       - ./custom:/opt/src/hasura/app/custom
       - ${STORAGE_DIR}:/export
     ports:
@@ -42,6 +44,10 @@ services:
     ports:
       - '5433:5432'
   hasura:
+    logging:
+      options:
+        max-size: "50k"
+        max-file: "3"
     container_name: hasura
     image: hasura/graphql-engine:v2.0.9.cli-migrations-v3
     ports:
@@ -53,7 +59,7 @@ services:
       - ./migrations:/hasura-migrations
       - ./metadata:/hasura-metadata
     environment:
-      HASURA_GRAPHQL_ENABLED_LOG_TYPES: "http-log,websocket-log,query-log"
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES: "startup, http-log, webhook-log, websocket-log, query-log"
       HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432/postgres
       HASURA_GRAPHQL_ADMIN_SECRET:  '${HASURA_GRAPHQL_ADMIN_SECRET}'
       HASURA_GRAPHQL_JWT_SECRET: '${HASURA_GRAPHQL_JWT_SECRET}'

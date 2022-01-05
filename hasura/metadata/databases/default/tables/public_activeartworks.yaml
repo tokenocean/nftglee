@@ -1,0 +1,24 @@
+table:
+  name: activeartworks
+  schema: public
+object_relationships:
+- name: artwork
+  using:
+    manual_configuration:
+      column_mapping:
+        id: id
+      insertion_order: null
+      remote_table:
+        name: artworks
+        schema: public
+select_permissions:
+- permission:
+    columns:
+    - id
+    filter: {}
+  role: anonymous
+- permission:
+    columns:
+    - id
+    filter: {}
+  role: user

@@ -21,5 +21,8 @@ hasura/ipfs
 hasura/ghost-data
 hasura/app/proofs.json
 hasura/app/.pnpm-store
+cypress/integration/1-getting-started
+cypress/integration/2-advanced-examples
+**/.pnpm-debug.log
 .svelte-kit
-cypress/fixtures/*
+.env.local
