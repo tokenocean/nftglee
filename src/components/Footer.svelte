@@ -25,7 +25,7 @@
           >
         </li>
         <li class="mb-2">
-          <a target="_blank" href={branding.urls.external.blog}>Blog</a>
+          <a target="_blank" href="https://www.nftglee.com/blog-list/">Blog</a>
         </li>
       </ul>
     </div>
