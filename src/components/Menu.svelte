@@ -1,4 +1,5 @@
 <script>
+  import { session } from "$app/stores";
   import { Avatar, Search } from "$comp";
   import { show, user, token } from "$lib/store";
 
