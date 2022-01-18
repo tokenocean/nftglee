@@ -33,9 +33,7 @@ module.exports = {
       id
     }
   }`,
-  createTransaction: `mutation create_transaction(
-    $transaction: transactions_insert_input!
-  ) {
+  createTransaction: `mutation create_transaction($transaction: transactions_insert_input!) {
     insert_transactions_one(object: $transaction) {
       id
     }
