@@ -292,7 +292,7 @@ let updateTransactions = async (address, user_id) => {
         hexcache[txid] || (await electrs.url(`/tx/${txid}/hex`).get().text());
       hexcache[txid] = hex;
     } catch (e) {
-      await sleep(3000);
+      await sleep(10000);
       hex =
         hexcache[txid] || (await electrs.url(`/tx/${txid}/hex`).get().text());
       hexcache[txid] = hex;
