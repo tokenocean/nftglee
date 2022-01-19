@@ -19,6 +19,13 @@ array_relationships:
       table:
         name: favorites
         schema: public
+- name: featureds
+  using:
+    foreign_key_constraint_on:
+      column: artwork_id
+      table:
+        name: featured
+        schema: public
 - name: offers
   using:
     manual_configuration:
@@ -77,12 +84,6 @@ computed_fields:
   name: is_locked
 - definition:
     function:
-      name: artwork_unlocked_for
-      schema: public
-    table_argument: artwork_row
-  name: unlocked_for
-- definition:
-    function:
       name: artwork_is_sold
       schema: public
     table_argument: artwork_row
@@ -101,6 +102,12 @@ computed_fields:
     session_argument: hasura_session
     table_argument: artwork_row
   name: num_favorites
+- definition:
+    function:
+      name: artwork_unlocked_for
+      schema: public
+    table_argument: artwork_row
+  name: unlocked_for
 insert_permissions:
 - permission:
     backend_only: false
@@ -182,13 +189,13 @@ select_permissions:
     - num_favorites
     filter:
       _and:
-        - _or:
-            - asking_asset:
-                _is_null: false
-            - transferred_at:
-                _is_null: false
-        - locked_by:
-            _is_null: true
+      - _or:
+        - asking_asset:
+            _is_null: false
+        - transferred_at:
+            _is_null: false
+      - locked_by:
+          _is_null: true
   role: anonymous
 - permission:
     allow_aggregations: true
@@ -236,31 +243,31 @@ select_permissions:
     - num_favorites
     filter:
       _and:
-        - _or:
-            - owner_id:
-                _eq: X-Hasura-User-Id
-            - asking_asset:
-                _is_null: false
-            - transferred_at:
-                _is_null: false
-            - _exists:
-                _where:
-                  _and:
-                    - id:
-                        _eq: X-Hasura-User-Id
-                    - is_admin:
-                        _eq: true
-                _table:
-                  schema: public
-                  name: users
-        - _or:
-            - unlocked_for:
-                _regex: X-Hasura-User-Id
-            - _and:
-                - unlocked_for:
-                    _is_null: true
-                - locked_by:
-                    _is_null: true
+      - _or:
+        - owner_id:
+            _eq: X-Hasura-User-Id
+        - asking_asset:
+            _is_null: false
+        - transferred_at:
+            _is_null: false
+        - _exists:
+            _table:
+              name: users
+              schema: public
+            _where:
+              _and:
+              - id:
+                  _eq: X-Hasura-User-Id
+              - is_admin:
+                  _eq: true
+      - _or:
+        - unlocked_for:
+            _regex: X-Hasura-User-Id
+        - _and:
+          - unlocked_for:
+              _is_null: true
+          - locked_by:
+              _is_null: true
   role: user
 update_permissions:
 - permission:
