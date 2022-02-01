@@ -34,7 +34,7 @@
   import { browser } from "$app/env";
   import { page, session } from "$app/stores";
   import decode from "jwt-decode";
-  import { Cursor, Sidebar, Navbar, Dialog, Footer, Snack, Head } from "$comp";
+  import { Sidebar, Navbar, Dialog, Footer, Snack, Head } from "$comp";
   import {
     addresses as a,
     meta,
@@ -130,7 +130,6 @@
   </div>
 </main>
 
-<Cursor />
 <Footer />
 
 <style global src="../main.css">
