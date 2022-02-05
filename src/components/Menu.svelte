@@ -13,6 +13,7 @@
     width: auto;
     text-align: left;
     font-family: "Montserrat";
+    font-weight: bold;
     color: #000;
     /* text-transform: uppercase; */
   }
@@ -26,7 +27,6 @@
   /* text-transform: uppercase; */
   text-decoration: none;
   letter-spacing: 0.15em;
-  
   display: inline-block;
   padding: 5px 20px;
   position: relative;
