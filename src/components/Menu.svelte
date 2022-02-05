@@ -1,7 +1,6 @@
 <script>
   import { Avatar, Search } from "$comp";
   import { show, user, token } from "$lib/store";
-  // import DarkModeToggle from "../components/DarkModeToggle.svelte";
 
   export let open = false;
   let toggle = () => (open = !open);
@@ -15,7 +14,6 @@
     font-family: "Montserrat";
     font-weight: bold;
     color: #000;
-    /* text-transform: uppercase; */
   }
 
   .menu a {
@@ -24,7 +22,6 @@
 
   .menu a {
   color: #fff;
-  /* text-transform: uppercase; */
   text-decoration: none;
   letter-spacing: 0.15em;
   display: inline-block;
