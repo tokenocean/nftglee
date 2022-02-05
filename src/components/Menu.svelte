@@ -1,6 +1,7 @@
 <script>
   import { Avatar, Search } from "$comp";
   import { show, user, token } from "$lib/store";
+  // import DarkModeToggle from "../components/DarkModeToggle.svelte";
 
   export let open = false;
   let toggle = () => (open = !open);
@@ -11,21 +12,40 @@
     font-size: 15px;
     width: auto;
     text-align: left;
-    font-family: "Oswald-bold";
+    font-family: "Montserrat";
     color: #000;
-    text-transform: uppercase;
+    /* text-transform: uppercase; */
   }
 
   .menu a {
     padding: 0 20px;
   }
 
-  .menu button:hover {
-    border-bottom: 1px solid #000;
+  .menu a {
+  color: #fff;
+  /* text-transform: uppercase; */
+  text-decoration: none;
+  letter-spacing: 0.15em;
+  
+  display: inline-block;
+  padding: 5px 20px;
+  position: relative;
+}
+  .menu a:after {    
+    background: none repeat scroll 0 0 transparent;
+    bottom: 0;
+    content: "";
+    display: block;
+    height: 2px;
+    left: 50%;
+    position: absolute;
+    background: #000000;
+    transition: width 0.3s ease 0s, left 0.3s ease 0s;
+    width: 0;
   }
-
-  .menu a.no-underline button {
-    border-bottom: none;
+  .menu a:hover:after { 
+    width: 100%; 
+    left: 0; 
   }
 
   .menu :global(.search) {
@@ -60,7 +80,7 @@
 
   @media screen and (max-width: 1200px) {
     .menu a {
-      padding: 0 10px;
+      padding: 5px 10px;
       font-size: 16px;
     }
   }
@@ -69,25 +89,22 @@
     .menu {
       flex-direction: column;
       align-items: flex-start;
-      margin-top: 50px;
-      border-top: 1px solid gray;
+      margin-top: 25%;
       width: 100%;
     }
 
     .menu a {
       margin: 20px 0 0 20px;
-      font-family: "Oswald-bold";
     }
   }
 
 </style>
 
 <div class="flex justify-between items-center menu relative">
-  <a href="https://www.nftglee.com/about-us/"><button on:click={toggle}>About Us</button></a>
-  <a href="https://www.nftglee.com/glee/"><button on:click={toggle}>New Drops</button></a>
+  <a href="https://www.nftglee.com/"><button on:click={toggle}>Home</button></a>
+  <a href="https://www.nftglee.com/built-better/"><button on:click={toggle}>Built Better</button></a>
+  <a href="https://www.nftglee.com/services/"><button on:click={toggle}>Services</button></a>
   <a href="/market"><button on:click={toggle}>Marketplace</button></a>
-  <a href="https://www.nftglee.com/work/"><button
-      on:click={toggle}>Our Work</button></a>
   {#if $user}
     <a href="https://www.nftglee.com/contact-us-4/"><button on:click={toggle}>Contact Us</button></a>
     {#if $user.is_admin}
@@ -98,8 +115,10 @@
         <Avatar user={$user} />
       </button></a>
   {:else}
-    <a href="/login"><button on:click={toggle}>Log In</button></a>
+  <a href="https://www.nftglee.com/about-us/"><button on:click={toggle}>About Us</button></a>
+    <a href="/login"><button on:click={toggle}>Login</button></a>
     <a href="/register"><button on:click={toggle}>Sign Up</button></a>
-    <a href="/contact"><button on:click={toggle}>Contact Us</button></a>
+    <a href="https://www.nftglee.com/support/"><button on:click={toggle}>Support</button></a>
   {/if}
+  <!-- <DarkModeToggle/> -->
 </div>
