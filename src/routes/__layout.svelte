@@ -37,6 +37,7 @@
   import { page, session } from "$app/stores";
   import decode from "jwt-decode";
   import { Sidebar, Navbar, Dialog, Footer, Snack, Head } from "$comp";
+  import PageLoadIndicator from "$lib/header/PageLoadIndicator.svelte";
   import {
     addresses as a,
     meta,
@@ -124,6 +125,7 @@
   <Head metadata={branding.meta} />
 {/if}
 
+<PageLoadIndicator />
 <Snack />
 
 <Sidebar bind:open />
