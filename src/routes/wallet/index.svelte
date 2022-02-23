@@ -59,6 +59,22 @@
     funding = false;
   };
 
+  let handleReveal = () => {
+    let moonpayFrame = document.getElementById('iframe-holder');
+    let displaySetting = moonpayFrame.style.display;
+
+    let displayBtn = document.getElementById('moonpay-button');
+
+    if (displaySetting == 'block') {
+      moonpayFrame.style.display = 'none';
+      displayBtn.innerHTML = 'Fund with Moonpay';
+    }
+    else {
+      moonpayFrame.style.display = 'block';
+      displayBtn.innerHTML = 'Hide Moonpay';
+    }
+  };
+
   onMount(() => {
     if (browser) {
       getBalances();
@@ -100,6 +116,44 @@
   button:disabled {
     @apply text-gray-400 border-gray-400;
   }
+
+  #moonpay-button {
+    margin: 10px;
+    padding: 15px 10px;
+    background-color: teal;
+    color: white;
+    font-weight: 500;
+    border: 2px solid teal;
+    transition: all 0.5s ease;
+  }
+
+  #moonpay-button:hover {
+    background-color: white;
+    color: teal;
+  }
+
+  #iframe-holder {
+    width: 100%;
+    height: 100vh;
+    display: none;
+    animation-name: fadeInLeft;
+	  animation-delay: .1s;  
+    animation-duration: 0.5s;
+    animation-timing-function: ease-in-out;
+    animation-fill-mode: both;
+  }
+
+  @keyframes fadeInLeft {
+	0% {
+		  opacity: 0;
+		  transform: translateX(-20px);
+	  }
+	
+	100% {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
 
 </style>
 
@@ -167,6 +221,21 @@
       <Fund bind:funding />
       <Withdraw bind:withdrawing />
       <Transactions />
+    </div>
+    <button 
+      id="moonpay-button" 
+      on:click|preventDefault|stopPropagation={() => (handleReveal())}
+      >Fund with <strong>Moonpay</strong>
+    </button>
+    <div id="iframe-holder">
+      <iframe
+      title="Moonpay widget"
+      allow="accelerometer; autoplay; camera; gyroscope; payment"
+      frameborder="0"
+      height="100%"
+      src="https://buy-staging.moonpay.io?apiKey=pk_test_qSLHDgLpyIEmJtfOSZWxMeOIkfnZuq"
+      width="100%"
+      ></iframe>
     </div>
   </div>
 {/if}
