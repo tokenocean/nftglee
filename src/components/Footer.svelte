@@ -1,3 +1,8 @@
+<script>
+  let date = new Date();
+  let year = date.getFullYear();
+</script>
+
 <div class="bg-black px-2 mt-24">
   <div class="container footer mx-auto flex flex-wrap text-white pt-12">
     <div
@@ -6,7 +11,7 @@
       <a href="https://www.nftglee.com/"
         ><img src="/nftglee_white.png" alt="logo" class="w-48" /></a
       >
-      <p class="mt-4">@2021 NFTglee</p>
+      <p class="mt-4">@{year} NFTglee</p>
     </div>
     <div class="w-full lg:w-1/4 mb-10">
       <h4 class="font-bold mb-4">Follow US</h4>
