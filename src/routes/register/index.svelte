@@ -94,7 +94,7 @@
     {:else if registered}
       <h2 class="mb-8">Registered!</h2>
       <p>
-        Thanks for registering. Please check your email for an activation link.
+        Thanks for registering. You may now log in with your new account.
       </p>
 
       <p class="mt-4">
