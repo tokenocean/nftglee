@@ -2,6 +2,7 @@ export const marketFields = `
   id
   edition
   editions
+  edition_id
   title
   filename
   filetype
@@ -38,6 +39,7 @@ export const marketFields = `
 export const fields = `
   id,
   asset
+  edition_id
   edition
   editions
   held
