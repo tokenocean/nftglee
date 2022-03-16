@@ -94,8 +94,9 @@ const check = async (psbt) => {
           const recipientsWithOuts = royalty_recipients.find((recipient) => {
             let unconfidential;
             try {
-              unconfidential = Address.fromConfidential(recipient.address)
-                .unconfidentialAddress;
+              unconfidential = Address.fromConfidential(
+                recipient.address
+              ).unconfidentialAddress;
             } catch (e) {}
 
             return (

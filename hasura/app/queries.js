@@ -16,6 +16,8 @@ module.exports = {
       id
       address
       multisig
+      display_name
+      full_name
     }
   }`,
   cancelBid: `mutation ($id: uuid!) {
@@ -75,10 +77,12 @@ module.exports = {
   }`,
   getTransactionArtwork: `query($id: uuid!) {
     artworks(where: { id: { _eq: $id }}) {
+      id
       auction_start
       auction_end
       bid_increment
       owner {
+        id
         display_name
       }
       title
@@ -145,6 +149,12 @@ module.exports = {
   updateUser: `mutation update_user($user: users_set_input!, $id: uuid!) {
     update_users_by_pk(pk_columns: { id: $id }, _set: $user) {
       id
+    }
+  }`,
+  getUser: `query get_user_by_pk($id: uuid!) {
+    users_by_pk(id: $id) {
+      display_name
+      full_name
     }
   }`,
   getAvatars: `query { users { id, avatar_url }}`,
@@ -229,16 +239,20 @@ module.exports = {
       contract
     } 
   }`,
-  getLastTransactionForAddress: `query($address: String!) {
+  getLastTransactionsForAddress: `query($address: String!) {
     transactions(
       where: {
         address: {_eq: $address}, 
         type: {_in: ["deposit", "withdrawal"]}
       },
-      limit: 1,
+      limit: 25,
       order_by: [{ sequence: desc }]
     ) {
       hash
+      type
+      asset
+      address
+      user_id
     }
   }`,
   getTransactions: `query($id: uuid!, $limit: Int) {
@@ -293,6 +307,37 @@ module.exports = {
       } 
     }
   }`,
+  getArtworkWithBidTransactionByHash: `query getArtworkWithBidTransactionByHash($id: uuid!, $hash: String!) {
+    artworks_by_pk(id: $id) {
+      id
+      title
+      slug
+      owner {
+        full_name
+        display_name
+      }
+      transactions(where:{type:{_eq:"bid"}}) {
+        amount
+        user{
+          display_name
+          full_name
+        }
+      }
+    }
+    transactions(where: {hash:{_eq: $hash}, type: {_eq: "bid"}}){
+      id
+      type
+      amount
+    }
+  }`,
+  getArtworkByPk: `query getArtworkByPk($id: uuid!) {
+    artworks_by_pk(id: $id) {
+      id
+      title
+      slug
+      list_price
+    }
+  }`,
   getUtxos: `query($address: String!) {
     utxos(where: { address: { _eq: $address }}, order_by: [{ tx: { sequence: desc }}]) {
       id
@@ -308,5 +353,16 @@ module.exports = {
       asset
       value
     }
+  }`,
+  createArtwork: `mutation ($artwork: artworks_insert_input!, $tags: [tags_insert_input!]!, $transaction: transactions_insert_input!) {
+    insert_artworks_one(object: $artwork) {
+      id
+    }
+    insert_tags(objects: $tags) {
+      affected_rows
+    }
+    insert_transactions_one(object: $transaction) {
+      id
+    } 
   }`,
 };
