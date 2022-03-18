@@ -46,7 +46,6 @@
 <div class="flex secondary-header mt-20 mb-20 text-white">
   <video
     class="lazy cover absolute secondary-header"
-    autoplay
     muted
     playsinline
     loop
