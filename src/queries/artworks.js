@@ -2,6 +2,7 @@ export const marketFields = `
   id
   edition
   editions
+  edition_id
   title
   filename
   filetype
@@ -38,6 +39,7 @@ export const marketFields = `
 export const fields = `
   id,
   asset
+  edition_id
   edition
   editions
   held
@@ -212,7 +214,7 @@ export const getArtworksByUsername = (username) => `query {
 }`;
 
 export const getArtworksByTag = (tag) => `query {
-  artworks(where: {tags: {tag: {_eq: "${tag}"}}}) {
+  artworks(where: {tags: {tag: {_eq: "${tag}"}}}, order_by: { edition: asc }) {
     ${fields}
   }
 }`;
