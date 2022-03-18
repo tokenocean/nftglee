@@ -104,10 +104,7 @@
   >
     <video
       class="lazy"
-      autoplay
       muted
-      playsinline
-      loop
       bind:this={vid}
       controls={popup}
     >
