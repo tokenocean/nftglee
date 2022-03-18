@@ -214,7 +214,7 @@ export const getArtworksByUsername = (username) => `query {
 }`;
 
 export const getArtworksByTag = (tag) => `query {
-  artworks(where: {tags: {tag: {_eq: "${tag}"}}}, order_by: { created_at: asc }) {
+  artworks(where: {tags: {tag: {_eq: "${tag}"}}}, order_by: { edition: asc }) {
     ${fields}
   }
 }`;
