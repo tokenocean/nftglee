@@ -117,8 +117,6 @@
     <video
       class={`lazy ${classes}`}
       muted
-      playsinline
-      loop
       bind:this={vid}
       controls={popup}
     >

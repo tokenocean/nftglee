@@ -115,8 +115,6 @@
   <video
     class="lazy cover absolute secondary-header"
     muted
-    playsinline
-    loop
   >
     <source src="/bob.mp4" />
     Your browser does not support HTML5 video.
