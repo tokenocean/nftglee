@@ -42,7 +42,7 @@
       window.sessionStorage.setItem("password", password);
       window.sessionStorage.setItem("username", res.user.username);
 
-      goto("/");
+      goto("/market");
     } catch (e) {
       err(e);
     }

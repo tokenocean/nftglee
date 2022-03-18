@@ -116,7 +116,6 @@
   >
     <video
       class={`lazy ${classes}`}
-      autoplay
       muted
       playsinline
       loop

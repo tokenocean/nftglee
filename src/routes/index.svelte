@@ -111,16 +111,16 @@
   </div>
 {/if}
 
-<div class="container mx-auto px-10">
-  <h3>Recent Activity</h3>
-</div>
-<div class="container mx-auto flex overflow-x-auto">
-  {#each recent as transaction}
-    <RecentActivityCard {transaction} />
-  {/each}
-</div>
-<div class="container more marg-bottom">
-  <a class="secondary-btn" href={"/activity"}>View more</a>
+<div class="flex secondary-header mt-20 mb-20 text-white">
+  <video
+    class="lazy cover absolute secondary-header"
+    muted
+    playsinline
+    loop
+  >
+    <source src="/bob.mp4" />
+    Your browser does not support HTML5 video.
+  </video>
 </div>
 
 <div class="container mx-auto px-10">
