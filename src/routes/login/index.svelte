@@ -41,7 +41,7 @@
       $session = { user: $user };
       window.sessionStorage.setItem("password", password);
 
-      goto("/");
+      goto("/market");
     } catch (e) {
       err(e);
     }

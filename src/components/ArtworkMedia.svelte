@@ -104,7 +104,6 @@
   >
     <video
       class="lazy"
-      autoplay
       muted
       playsinline
       loop
