@@ -4,7 +4,7 @@ import { createWallet } from "$lib/wallet";
 import wordlist from "$lib/wordlist";
 import { generateMnemonic } from "bip39";
 
-export const register = async (email, username, password) => {
+export const register = async (email, username, password, promo) => {
   if (!validateEmail(email)) throw new Error("Invalid email");
   if (password.length < 8) throw new Error("Password must be 8 characters");
 
@@ -13,6 +13,7 @@ export const register = async (email, username, password) => {
     .post({
       email,
       password,
+      promo,
       username,
       ...createWallet(
         generateMnemonic(undefined, undefined, wordlist),
