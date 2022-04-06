@@ -80,13 +80,6 @@
             data-cy="password"
           />
         {/if}
-        <input
-          class="w-full"
-          type="text"
-          <!-- bind:value={} -->
-          autocapitalize="off"
-          data-cy="password"
-        />
         <button
           class="absolute h-full px-3 right-0 top-0 w-auto"
           type="button"
