@@ -64,6 +64,7 @@ app.post("/register", async (req, res) => {
     email,
     password,
     username,
+    promo,
   } = req.body;
 
   try {
@@ -90,6 +91,7 @@ app.post("/register", async (req, res) => {
             pubkey,
             mnemonic,
             multisig,
+            promo,
           },
         },
       })
