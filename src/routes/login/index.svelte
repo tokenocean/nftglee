@@ -34,7 +34,7 @@
 
   let login = async () => {
     try {
-      let res = await post("/api/auth/login", { email, password }, fetch).json();
+      let res = await post("/auth/login", { email, password }, fetch).json();
 
       $user = res.user;
       $token = res.jwt_token;
