@@ -1,9 +1,9 @@
-module.exports = {
-  projectName: "NFT Glee",
+export default {
+  projectName: "Raretoshi",
   urls: {
-    protocol: "https://bid.nftglee.com",
+    protocol: "https://raretoshi.com",
   },
   emails: {
-    support: "support@nftglee.com",
+    support: "support@raretoshi.com",
   },
 };
