@@ -1,49 +1,41 @@
 <script>
+  import branding from "$lib/branding";
   import { session } from "$app/stores";
   import { Avatar, Search } from "$comp";
-  import { show, user, token } from "$lib/store";
 
   export let open = false;
   let toggle = () => (open = !open);
 </script>
 
+<div class="flex justify-between items-center menu relative">
+  <Search suggest={false} />
+  <a sveltekit:prefetch href="/market"
+    ><button on:click={toggle}>Market</button></a
+  >
+  <a sveltekit:prefetch href="/activity"
+    ><button on:click={toggle}>Activity</button></a
+  >
+  <a href={branding.urls.external.blog}
+    ><button on:click={toggle}>Blog</button></a
+  >
+  <a href="/help"><button on:click={toggle}>Help</button></a>
+  {#if $session?.user}
+    {#if $session.user.is_admin}
+      <a href="/admin"><button on:click={toggle}>Admin</button></a>
+    {/if}
+    <a href={`/${$session.user?.username}`}>
+      <button on:click={toggle} class="flex">
+        <Avatar user={$session.user} />
+      </button></a
+    >
+  {:else}<a href="/login"><button on:click={toggle}>Sign In</button></a>{/if}
+</div>
+
 <style>
   .menu button {
-    font-size: 15px;
     width: auto;
     text-align: left;
-    font-family: "Montserrat";
-    font-weight: bold;
-    color: #000;
-  }
-
-  .menu a {
     padding: 0 20px;
-  }
-
-  .menu a {
-  color: #fff;
-  text-decoration: none;
-  letter-spacing: 0.15em;
-  display: inline-block;
-  padding: 5px 20px;
-  position: relative;
-}
-  .menu a:after {    
-    background: none repeat scroll 0 0 transparent;
-    bottom: 0;
-    content: "";
-    display: block;
-    height: 2px;
-    left: 50%;
-    position: absolute;
-    background: #000000;
-    transition: width 0.3s ease 0s, left 0.3s ease 0s;
-    width: 0;
-  }
-  .menu a:hover:after { 
-    width: 100%; 
-    left: 0; 
   }
 
   .menu :global(.search) {
@@ -76,47 +68,18 @@
     }
   }
 
-  @media screen and (max-width: 1200px) {
-    .menu a {
-      padding: 5px 10px;
-      font-size: 16px;
-    }
-  }
-
   @media only screen and (max-width: 1023px) {
     .menu {
       flex-direction: column;
       align-items: flex-start;
-      margin-top: 25%;
+      margin-top: 50px;
+      border-top: 1px solid gray;
       width: 100%;
     }
 
     .menu a {
-      margin: 20px 0 0 20px;
+      margin: 25px 0 0 0px;
+      width: 100%;
     }
   }
-
 </style>
-
-<div class="flex justify-between items-center menu relative">
-  <a href="https://www.nftglee.com/"><button on:click={toggle}>Home</button></a>
-  <a href="https://www.nftglee.com/built-better/"><button on:click={toggle}>Built Better</button></a>
-  <a href="https://www.nftglee.com/services/"><button on:click={toggle}>Services</button></a>
-  <a href="/market"><button on:click={toggle}>Marketplace</button></a>
-  {#if $user}
-    <a href="https://www.nftglee.com/contact-us-4/"><button on:click={toggle}>Contact Us</button></a>
-    {#if $user.is_admin}
-      <a href="/admin"><button on:click={toggle}>Admin</button></a>
-    {/if}
-    <a href={`/u/${$user.username}`}>
-      <button on:click={toggle} class="flex" style="border: none">
-        <Avatar user={$user} />
-      </button></a>
-  {:else}
-  <a href="https://www.nftglee.com/about-us/"><button on:click={toggle}>About Us</button></a>
-    <a href="/login"><button on:click={toggle}>Login</button></a>
-    <a href="/register"><button on:click={toggle}>Sign Up</button></a>
-    <a href="https://www.nftglee.com/support/"><button on:click={toggle}>Support</button></a>
-  {/if}
-  <!-- <DarkModeToggle/> -->
-</div>

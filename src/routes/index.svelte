@@ -13,7 +13,6 @@
   import { query } from "$lib/api";
   import { Summary } from "$comp";
   import { fade } from "svelte/transition";
-  import { user } from "$lib/store";
   import { Activity, RecentActivityCard, LatestPiecesCard } from "$comp";
   import { err } from "$lib/utils";
   import branding from "$lib/branding";
@@ -21,45 +20,138 @@
   import { browser } from "$app/env";
 
   onMount(() => browser && prefetch("/market"));
+
+  export let featured;
+  export let recent;
+  export let latest;
+
+  let current = 0;
+  $: artwork = featured && featured[current] && featured[current].artwork;
+
+  let interval = setInterval(() => {
+    if (!featured) return;
+    current++;
+    if (current >= featured.length) current = 0;
+  }, 6000);
+
+  onDestroy(() => clearInterval(interval));
 </script>
 
-<div class="flex mx-auto justify-center">
-  <div class="header mt-10 md:mt-20 text-center text-2xl">
-    <h1 class="mb-10 text-center w-full">Discover, Collect, & Sell.</h1>
-    <p class="md:max-w-md mx-auto text-center">Curated NFT Platform.</p>
-    <p class="md:max-w-md mx-auto text-center">Art, Access + Utility NFTs.</p>
-    <p class="md:max-w-md mx-auto text-center">Minted on Bitcoin. Low Fees.</p>
-    <div class="mt-10 relative">
-      <a class="edgtf-btn bg-black text-white px-20 py-2" href="/market">
-        <span>Enter</span>
-      </a>
-      <img
-        src="/greencrypto.png"
-        class="w-52 lg:absolute mx-auto py-10 bottom-4 xl:-bottom-8 right-16"
-        alt="Green Crypto"
-      />
-    </div>
+<div class="flex header-container mx-auto justify-center marg-bottom">
+  <div class="header text-center">
+    <h1 class="text-left md:text-center md:w-full">
+      {branding.projectName}
+      <br />digital art
+    </h1>
+    <h5 class="md:max-w-lg mx-auto text-left md:text-center">
+      Upload, collect, and transact rare digital art on the Liquid Network
+    </h5>
+    <a class="primary-btn" href={`/market`}>Start exploring</a>
   </div>
 </div>
 
-<div class="flex secondary-header mt-20 mb-20 text-white">
-  <video
-    class="lazy cover absolute secondary-header"
-    autoplay
-    muted
-    playsinline
-    loop
-  >
-    <source src="/bob.mp4" />
-    Your browser does not support HTML5 video.
-  </video>
+{#if artwork}
+  <div class="flex secondary-header marg-bottom">
+    <div
+      class="container flex mx-auto flex-col justify-end md:justify-center secondary-header-text m-10 pl-6 z-10"
+    >
+      <div class="blur-bg">
+        <h2>{artwork.artist.username}</h2>
+        <p>
+          {artwork.title}
+
+          {#if new Date() < new Date("2022-04-15")}
+            <a href="/tag/bitcoinbond">
+              <button
+                class="button-transparent header-button border mt-10"
+                style="border-color: white; color: white"
+              >
+                Visit The Bitcoin Bond Gallery</button
+              ></a
+            >
+          {:else}
+            <a href="/a/{artwork.slug}">
+              <button
+                class="button-transparent header-button border mt-10"
+                style="border-color: white; color: white"
+              >
+                View Artwork</button
+              ></a
+            >
+          {/if}
+        </p>
+      </div>
+    </div>
+
+    {#if artwork.filetype.includes("video")}
+      <video
+        in:fade
+        out:fade
+        class="lazy cover absolute secondary-header"
+        autoplay
+        muted
+        playsinline
+        loop
+        src={`/api/public/${artwork.filename}.${
+          artwork.filetype.split("/")[1]
+        }`}
+        :key={featured[current].id}
+      />
+    {:else}
+      <img
+        in:fade
+        out:fade
+        class="lazy cover absolute secondary-header"
+        alt={artwork.title}
+        src={`/api/public/${artwork.filename}.${
+          artwork.filetype.split("/")[1]
+        }`}
+      />
+    {/if}
+  </div>
+{/if}
+
+<div class="container mx-auto px-10">
+  <h3>Recent Activity</h3>
+</div>
+<div class="container mx-auto flex overflow-x-auto">
+  {#each recent as transaction}
+    <RecentActivityCard {transaction} />
+  {/each}
+</div>
+<div class="container more marg-bottom">
+  <a class="secondary-btn" href={"/activity"}>View more</a>
 </div>
 
+<div class="container mx-auto px-10">
+  <h3>Latest Pieces</h3>
+</div>
+<div class="container mx-auto flex pb-1 overflow-x-auto">
+  {#each latest as transaction}
+    <LatestPiecesCard {transaction} />
+  {/each}
+</div>
+<div class="container more marg-bottom">
+  <a class="secondary-btn" href={"/market"}>View gallery</a>
+</div>
 
 <style>
   .header {
     width: 90%;
     margin-top: 128px;
+  }
+
+  .header .primary-btn {
+    width: 240px;
+    margin: 0 auto;
+  }
+
+  .header h5 {
+    font-size: 22px;
+    line-height: 36px;
+    color: #2d2e32;
+    margin-top: 24px;
+    margin-bottom: 34px;
   }
 
   .secondary-header {
@@ -68,14 +160,91 @@
     object-fit: cover;
   }
 
+  .blur-bg {
+    display: flex;
+    padding: 60px;
+    flex-direction: column;
+    background: rgba(54, 58, 74, 0.45);
+    backdrop-filter: blur(30px);
+    box-shadow: 2px 2px 4px 0 rgb(0 0 0 / 10%);
+    border-radius: 8px;
+    color: white;
+    width: 50%;
+    width: fit-content;
+  }
+
+  .blur-bg h2 {
+    color: white !important;
+  }
+
+  .blur-bg p {
+    color: white !important;
+    margin-top: 20px;
+  }
+
+  .container.more {
+    display: flex;
+    justify-content: center;
+    margin: 0 auto;
+    margin-top: 36px;
+  }
+
+  .more .secondary-btn {
+    width: 180px;
+  }
+
+  .header-button {
+    border: 1px solid;
+    border-radius: 30px;
+    padding: 0.7rem 1.5rem !important;
+  }
+
+  h3 {
+    margin-bottom: 36px;
+  }
+
+  .marg-bottom {
+    margin-bottom: 128px !important;
+  }
+
   @media only screen and (max-width: 768px) {
+    .header-container.marg-bottom {
+      margin-bottom: 96px !important;
+    }
+
     .header {
       margin-top: 64px;
+    }
+
+    h3 {
+      margin-bottom: 32px;
+    }
+
+    .header h5 {
+      margin-top: 24px;
+      margin-bottom: 24px;
+    }
+
+    .header .primary-btn {
+      width: 100%;
     }
 
     .secondary-header {
       height: 400px !important;
     }
-  }
 
+    .container.more {
+      margin-top: 48px;
+    }
+
+    .marg-bottom {
+      margin-bottom: 96px !important;
+    }
+
+    .blur-bg {
+      padding: 24px;
+      width: 75%;
+      width: fit-content;
+    }
+  }
 </style>

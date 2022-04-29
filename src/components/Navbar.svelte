@@ -3,8 +3,13 @@
   import { faSearch } from "@fortawesome/free-solid-svg-icons";
   import Hamburger from "./Hamburger.svelte";
   import Menu from "./Menu.svelte";
+  import Popup from "./Popup.svelte";
+  import { get } from "svelte/store";
+  import { popup } from "$lib/store";
 
   export let sidebar = false;
+
+  const popupData = get(popup);
 
 </script>
 
@@ -42,14 +47,17 @@
 
 </style>
 
+{#if popupData}
+  <Popup text={popupData.text} dismissible={popupData.dismissible} />
+{/if}
 <header
-  class="flex w-full mx-auto justify-between px-16 mt-4 items-center text-gray-600">
+  class="flex container mx-auto justify-between px-4 py-4 items-center text-gray-600">
   <nav class="flex hambuger">
     <Hamburger bind:open={sidebar} />
   </nav>
   <div>
-    <a href="https://nftglee.com/">
-      <img src="/nftglee.png" alt="logo" class="w-36 lg:w-48 ml-1 -mt-1" /></a>
+    <a href="/" sveltekit:prefetch>
+      <img src="/logo-default.svg" alt="logo" class="w-36 lg:w-48" /></a>
   </div>
   <a class="mobileSearch" href="/market">
     <Fa icon={faSearch} />

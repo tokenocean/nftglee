@@ -66,6 +66,18 @@
         <p>These Terms Set Forth a Legally Binding Agreement</p>
 
         <p>
+          Please read these Terms &amp; Conditions (“Terms'', “Agreement”) very
+          carefully. This Agreement is between you (the “User(s),” “Artist(s),”
+          “Fan(s)”, and collectively any entity using the Site - “Users”) and
+          GreenAddressIT Limited (“Operator”, “we”or “us”), a company registered
+          and incorporated under the laws of Malta with company number C62738
+          and whose registered office is Vincenti Buildings 28/19 (Suite 1405),
+          Strait Street, VLT1432 Valletta, Malta and a wholly-owned, indirect
+          subsidiary of Blockstream Corporation Inc, and operating the { branding.projectName }
+          website (“Website”) located at { branding.projectName }.com (“Site”).
+        </p>
+
+        <p>
           THESE TERMS SET FORTH THE LEGALLY BINDING TERMS AND CONDITIONS THAT
           GOVERN YOUR USE OF THE WEBSITE OR PLATFORM. BY ACCESSING OR USING THIS
           SITE, YOU AGREE TO BE BOUND TO THESE TERMS AND CONDITIONS AND YOU HAVE

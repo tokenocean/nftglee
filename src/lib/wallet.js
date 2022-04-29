@@ -1,7 +1,7 @@
 import { tick } from "svelte";
 import { get } from "svelte/store";
 import { api, electrs, hasura } from "$lib/api";
-// import * as middlewares from "wretch-middlewares";
+import * as middlewares from "wretch-middlewares";
 import { mnemonicToSeedSync } from "bip39";
 import { fromSeed } from "bip32";
 import { fromBase58 } from "bip32";
@@ -21,27 +21,39 @@ import {
   pending,
   password,
   snack,
-  user,
   poll,
   psbt,
   sighash,
   titles,
+  txcache,
   transactions,
+  signStatus,
+  prompt,
+  user,
   token,
 } from "$lib/store";
 import cryptojs from "crypto-js";
-import { btc } from "$lib/utils";
+import { btc, info } from "$lib/utils";
 import { requirePassword } from "$lib/auth";
 import { getActiveBids } from "$queries/transactions";
 import { compareAsc, parseISO } from "date-fns";
+import { SignaturePrompt, AcceptPrompt } from "$comp";
+import createHash from "create-hash";
 
-// const { retry } = middlewares.default || middlewares;
+function sha256(buffer) {
+  return createHash("sha256").update(buffer).digest();
+}
 
-const DUST = 800;
+export const CANCELLED = "cancelled";
+export const ACCEPTED = "accepted";
+
+const { retry } = middlewares.default || middlewares;
+
+export const DUST = 800;
 const satsPerByte = 0.15;
 
 const serverKey = Buffer.from(import.meta.env.VITE_PUBKEY, "hex");
-const network = networks[import.meta.env.VITE_NETWORK];
+export const network = networks[import.meta.env.VITE_NETWORK];
 
 const singleAnyoneCanPay =
   Transaction.SIGHASH_SINGLE | Transaction.SIGHASH_ANYONECANPAY;
@@ -53,8 +65,8 @@ export const parseAsset = (v) => reverse(v.slice(1)).toString("hex");
 
 const nonce = Buffer.alloc(1);
 
-export const getTransactions = () => {
-  let { address } = get(user);
+export const getTransactions = (user) => {
+  let { address } = user;
   if (!get(poll).find((p) => p.name === "txns"))
     poll.set([
       ...get(poll),
@@ -71,26 +83,22 @@ export const getTransactions = () => {
   return txns();
 };
 
-export const getBalances = async () => {
-  await requirePassword();
+export const getBalances = async ({ user, jwt }) => {
+  await requirePassword({ jwt });
 
   let { confirmed: c, pending: p } = await api
-    .auth(`Bearer ${get(token)}`)
+    .auth(`Bearer ${jwt}`)
     .url("/balance")
     .get()
     .json();
 
   Object.keys(c).map(async (a) => {
     let artwork = get(titles).find(
-      (t) => t.asset === a && t.owner_id !== get(user).id
+      (t) => t.asset === a && t.owner_id !== user.id
     );
 
     if (artwork) {
-      await api
-        .auth(`Bearer ${get(token)}`)
-        .url("/claim")
-        .post({ artwork })
-        .json();
+      await api.auth(`Bearer ${jwt}`).url("/claim").post({ artwork }).json();
     }
   });
 
@@ -103,7 +111,9 @@ const getHex = async (txid) => {
 };
 
 export const getTx = async (txid) => {
-  return Transaction.fromHex(await getHex(txid));
+  let tx = Transaction.fromHex(await getHex(txid));
+  txcache.set({ ...get(txcache), txid: tx });
+  return tx;
 };
 
 export const createWallet = (mnemonic, pass) => {
@@ -129,7 +139,7 @@ export const createWallet = (mnemonic, pass) => {
 };
 
 export const getMnemonic = (mnemonic, pass) => {
-  if (!mnemonic && get(user)) mnemonic = get(user).mnemonic;
+  if (!mnemonic && user) mnemonic = get(user).mnemonic;
   if (!pass) pass = get(password);
 
   mnemonic = cryptojs.AES.decrypt(mnemonic, pass).toString(cryptojs.enc.Utf8);
@@ -557,6 +567,7 @@ export const releaseToSelf = async (artwork) => {
   addFee(p);
 
   estimateFee(p);
+
   await construct(p2);
 
   addFee(p2);
@@ -614,6 +625,7 @@ export const pay = async (artwork, to, amount) => {
 
   addFee(p2);
 
+  psbt.set(p2);
   return p2;
 };
 
@@ -645,10 +657,31 @@ export const cancelSwap = async (artwork) => {
   return p;
 };
 
-export const sign = (sighash) => {
+export const requireSign = async () => {
+  signStatus.set(false);
+
+  return new Promise((resolve) =>
+    signStatus.subscribe((signedSub) => {
+      signedSub ? resolve(signedSub) : prompt.set(SignaturePrompt);
+    })
+  );
+};
+
+export const sign = async (sighash, prompt = true) => {
   let p = get(psbt);
+  const loggedUser = get(user);
 
   let { privkey } = keypair();
+
+  if (prompt && loggedUser.prompt_sign) {
+    const signResult = await requireSign();
+
+    if (signResult === CANCELLED) {
+      throw new Error("Signing cancelled");
+    }
+
+    info("Transaction signed!");
+  }
 
   p.data.inputs.map(({ sighashType }, i) => {
     try {
@@ -666,14 +699,16 @@ export const sign = (sighash) => {
   return p;
 };
 
-export const broadcast = (disableRetries = false) => {
-  let tx = get(psbt).extractTransaction();
+export const broadcast = async (disableRetries = false) => {
+  let p = await get(psbt);
+  let tx = p.extractTransaction();
+
   let hex = tx.toHex();
   let middlewares = [
-    // retry({
-    //   delayTimer: 6000,
-    //   maxAttempts: 3,
-    // }),
+    retry({
+      delayTimer: 6000,
+      maxAttempts: 5,
+    }),
   ];
 
   if (disableRetries) middlewares = [];
@@ -751,7 +786,7 @@ export const executeSwap = async (artwork) => {
 };
 
 export const createIssuance = async (
-  { filename: file, title: name, ticker },
+  { filename: file, title: name },
   domain,
   tx
 ) => {
@@ -765,62 +800,91 @@ export const createIssuance = async (
     value: 0,
   });
 
-  if (tx) {
-    let index = tx.outs.findIndex(
-      (o) =>
-        parseAsset(o.asset) === btc &&
-        o.script.toString("hex") === out.output.toString("hex")
-    );
-
-    if (index > -1) {
-      let input = {
-        index,
-        hash: tx.getId(),
-        nonWitnessUtxo: Buffer.from(tx.toHex(), "hex"),
-        redeemScript: out.redeem.output,
-      };
-
-      p.addInput(input);
-
-      let value = parseVal(tx.outs[index].value) - get(fee);
-
-      if (value > DUST)
-        p.addOutput({
-          asset: btc,
-          nonce,
-          script: out.output,
-          value,
-        });
-      else bumpFee(value);
-    }
-  } else {
-    await fund(p, out, btc, get(fee), 1, false, false);
-  }
-
   let contract = {
     entity: { domain },
     file,
     issuer_pubkey: keypair().pubkey.toString("hex"),
     name,
     precision: 0,
-    ticker,
+    ticker: null,
     version: 0,
   };
 
-  p.addIssuance({
-    assetAmount: 1,
-    assetAddress: out.address,
-    tokenAmount: 0,
-    precision: 0,
-    net: network,
-    contract,
-  });
+  console.log(tx.getId(), tx.vout);
 
+  let construct = async (p) => {
+    if (tx) {
+      let txid = tx.getId();
+      let index =
+        tx.vout ||
+        tx.outs.findIndex(
+          (o) =>
+            parseAsset(o.asset) === btc &&
+            o.script.toString("hex") === out.output.toString("hex")
+        );
+
+      if (index > -1) {
+        let input = {
+          index,
+          hash: tx.getId(),
+          nonWitnessUtxo: Buffer.from(tx.toHex(), "hex"),
+          redeemScript: out.redeem.output,
+        };
+
+        p.addInput(input);
+
+        let value = parseVal(tx.outs[index].value) - get(fee);
+
+        if (value > DUST)
+          p.addOutput({
+            asset: btc,
+            nonce,
+            script: out.output,
+            value,
+          });
+        else bumpFee(value);
+      }
+    } else {
+      await fund(p, out, btc, get(fee), 1, false, false);
+    }
+
+    p.addIssuance({
+      assetAmount: 1,
+      assetAddress: out.address,
+      tokenAmount: 0,
+      precision: 0,
+      net: network,
+      contract,
+    });
+  };
+
+  let p2 = Psbt.fromBase64(p.toBase64());
+  await construct(p);
   addFee(p);
+  estimateFee(p);
 
-  psbt.set(p);
+  await construct(p2);
+  addFee(p2);
+  psbt.set(p2);
 
   return contract;
+};
+
+export const getInputs = async () => {
+  let utxos = await api
+    .url(`/address/${singlesig().address}/utxo`)
+    .get()
+    .json();
+
+  let txns = [];
+  let a = utxos.filter((o) => o.asset === btc && o.value > DUST);
+  for (let i = 0; i < a.length; i++) {
+    let tx = Transaction.fromHex(await getHex(a[i].txid));
+    tx.vout = a[i].vout;
+    txns.push(tx);
+  }
+
+  return [txns, utxos.reduce((a, b) => a + b.value, 0)];
 };
 
 export const signOver = async ({ asset }, tx) => {
@@ -832,6 +896,7 @@ export const signOver = async ({ asset }, tx) => {
       .get()
       .json();
     let prevout = utxos.find((o) => o.asset === asset);
+
     let hex = await getHex(prevout.txid);
     tx = Transaction.fromHex(hex);
   }
@@ -848,7 +913,7 @@ export const signOver = async ({ asset }, tx) => {
   });
 
   psbt.set(p);
-  sign(noneAnyoneCanPay);
+  await sign(noneAnyoneCanPay);
   return tx;
 };
 

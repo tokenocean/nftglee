@@ -1,8 +1,8 @@
 <script>
   import { Avatar, ArtworkMedia, Heart } from "$comp";
   import countdown from "$lib/countdown";
-  import { fade, goto, units } from "$lib/utils";
-  import { onMount } from "svelte";
+  import { fade, units } from "$lib/utils";
+  import { onDestroy, onMount } from "svelte";
   import { loaded } from "$lib/store";
 
   export let justScrolled = false;
@@ -12,6 +12,7 @@
   export let thumb = true;
   export let popup = false;
   export let height = undefined;
+  export let noAudio = false;
 
   $: style = height ? `height: ${height}px` : undefined;
 
@@ -24,13 +25,16 @@
   }
 
   let start_counter, end_counter;
+  let timeout;
   let count = () => {
     if (!artwork) return;
     start_counter = countdown(new Date(artwork.auction_start));
     end_counter = countdown(new Date(artwork.auction_end));
-    setTimeout(count, 1000);
+    timeout = setTimeout(count, 1000);
   };
-  count();
+
+  onMount(count);
+  onDestroy(() => clearTimeout(timeout));
 </script>
 
 <div
@@ -42,7 +46,7 @@
   <div {style}>
     <a href={`/a/${artwork.slug}`} sveltekit:prefetch>
       {#if $loaded[artwork.id] || !justScrolled}
-        <ArtworkMedia {artwork} {showDetails} {popup} bind:thumb />
+        <ArtworkMedia {noAudio} {artwork} {showDetails} {popup} bind:thumb />
       {/if}
     </a>
   </div>
@@ -51,7 +55,7 @@
       <div class="p-4">
         <div class="flex flex-row justify-between h-20">
           <a href={`/a/${artwork.slug}`} class="mr-2">
-            <h1 class="text-xl break-words overflow-y-hidden max-h-14">
+            <h1 class="text-xl break-all overflow-y-hidden max-h-14">
               {artwork.title || "Untitled"}
               {#if !(artwork.transferred_at || artwork.asking_asset)}
                 (unlisted)
@@ -83,8 +87,9 @@
               <div class="price">{val(artwork.bid.amount)} {ticker}</div>
               <div class="text-xs font-medium">
                 Current bid by
-                <a href={`/${artwork.bid.user.username}`} class="secondary-color"
-                  >@{artwork.bid.user.username}</a
+                <a
+                  href={`/${artwork.bid.user.username}`}
+                  class="secondary-color">@{artwork.bid.user.username}</a
                 >
               </div>
             </div>
@@ -119,19 +124,19 @@
         </div>
       </div>
     </div>
-      {#if end_counter}
-        <div class="p-3 rounded-b-lg lightblue-grad text-black mt-auto">
-          Time left:
-          {end_counter}
-        </div>
-      {:else if start_counter}
-        <div class="p-3 rounded-b-lg lightblue-grad text-black mt-auto">
-          Auction starts in:
-          {start_counter}
-        </div>
-      {:else}
-        <div class="p-3 rounded-b-lg">&nbsp;</div>
-      {/if}
+    {#if end_counter}
+      <div class="p-3 rounded-b-lg lightblue-grad text-black mt-auto">
+        Time left:
+        {end_counter}
+      </div>
+    {:else if start_counter}
+      <div class="p-3 rounded-b-lg lightblue-grad text-black mt-auto">
+        Auction starts in:
+        {start_counter}
+      </div>
+    {:else}
+      <div class="p-3 rounded-b-lg">&nbsp;</div>
+    {/if}
   {/if}
 </div>
 

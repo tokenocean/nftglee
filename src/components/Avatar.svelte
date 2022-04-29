@@ -14,9 +14,9 @@
         key={user && user.username}
         src={user
           ? `/api/public/${user.avatar_url}`
-          : src.startsWith("data")
+          : src.startsWith("data") || src[0] === "/"
           ? src
-          : `/api/ipfs/${src}`}
+          : `/api/public/${src}`}
         alt={user ? user.username : "lovely avatar"}
         class="absolute w-full h-full object-cover object-center visible overflow-hidden"
       />
@@ -39,7 +39,7 @@
 
   .xs {
     @apply w-10 h-10;
-  } 
+  }
 
   .large {
     @apply w-16 h-16;

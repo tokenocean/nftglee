@@ -59,6 +59,7 @@ services:
       - ./migrations:/hasura-migrations
       - ./metadata:/hasura-metadata
     environment:
+      HASURA_GRAPHQL_MIGRATIONS_SERVER_TIMEOUT: 60
       HASURA_GRAPHQL_ENABLED_LOG_TYPES: "startup, http-log, webhook-log, websocket-log, query-log"
       HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432/postgres
       HASURA_GRAPHQL_ADMIN_SECRET:  '${HASURA_GRAPHQL_ADMIN_SECRET}'
@@ -67,7 +68,7 @@ services:
       HASURA_GRAPHQL_UNAUTHORIZED_ROLE: "anonymous"
   hbp:
     container_name: hbp
-    image: nhost/hasura-backend-plus:v2.2.3
+    image: nhost/hasura-backend-plus:v2.4.0
     depends_on:
       - hasura
     ports:
