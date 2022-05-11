@@ -8,6 +8,7 @@ services:
       HASURA_URL: "${HASURA_URL}"
       PROJECT_NAME: "tokenocean-nftglee"
       ENV_NAME: "staging"
+    restart: on-failure
   ui:
     depends_on:
       - lapp
