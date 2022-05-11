@@ -1,5 +1,13 @@
 version: "3.6"
 services:
+  pg_backup:
+    container_name: pg_backup
+    image: gcr.io/coinos-326717/github.com/tokenocean/pg_backup:latest
+    environment:
+      HASURA_GRAPHQL_ADMIN_SECRET: "${HASURA_GRAPHQL_ADMIN_SECRET}"
+      HASURA_URL: "${HASURA_URL}"
+      PROJECT_NAME: "tokenocean-nftglee"
+      ENV_NAME: "staging"
   ui:
     depends_on:
       - lapp
