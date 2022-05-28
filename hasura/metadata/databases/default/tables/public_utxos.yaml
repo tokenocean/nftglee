@@ -1,34 +1,16 @@
 table:
-  name: utxos
   schema: public
-insert_permissions:
-- permission:
-    backend_only: false
-    check:
-      user_id:
-        _eq: X-Hasura-User-Id
-    columns:
-    - utxo
-    - user_id
-  role: user
-select_permissions:
-- permission:
-    columns:
-    - utxo
-    - user_id
-    filter: {}
-  role: anonymous
-- permission:
-    columns:
-    - utxo
-    - user_id
-    filter:
-      user_id:
-        _eq: X-Hasura-User-Id
-  role: user
+  name: utxos
+object_relationships:
+  - name: transaction
+    using:
+      foreign_key_constraint_on: transaction_id
+  - name: user
+    using:
+      foreign_key_constraint_on: user_id
 delete_permissions:
-- permission:
-    filter:
-      user_id:
-        _eq: X-Hasura-User-Id
-  role: user
+  - role: user
+    permission:
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id

@@ -6,9 +6,7 @@
 
   export async function load({
     fetch,
-    page: {
-      params: { slug },
-    },
+    params: { slug },
   }) {
     const props = await fetch(`/artworks/${slug}.json`).then((r) => r.json());
 
@@ -45,7 +43,6 @@
     props.metadata = metadata;
 
     return {
-      maxage: 90,
       props,
     };
   }
@@ -60,7 +57,6 @@
   } from "@fortawesome/free-solid-svg-icons";
   import { getArtwork } from "$queries/artworks";
   import { faHeart, faImage } from "@fortawesome/free-regular-svg-icons";
-  import { page } from "$app/stores";
   import { compareAsc, format, parseISO } from "date-fns";
   import {
     Activity,

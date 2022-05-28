@@ -1,21 +1,23 @@
 <script context="module">
   import { prerendering } from "$app/env";
-  export async function load({ fetch, page, session }) {
+  import { get } from "$lib/api";
+  import "../main.css";
+
+  export async function load({ fetch, url, session }) {
     if (prerendering)
       return {
         props: {
-          addresses: [],
-          titles: [],
+          popup: null,
         },
       };
 
-    const props = await fetch(`/addresses.json`).then((r) => r.json());
+    const props = await get(`/announcements.json`, fetch);
 
     if (
       session &&
       session.user &&
       !session.user.wallet_initialized &&
-      !["/wallet", "/logout"].find((p) => page.path.includes(p))
+      !["/wallet", "/logout"].find((p) => url.pathname.includes(p))
     )
       return {
         status: 302,
@@ -23,7 +25,6 @@
       };
 
     return {
-      maxage: 90,
       props,
     };
   }
@@ -46,7 +47,6 @@
   } from "$lib/store";
   import { onDestroy, onMount } from "svelte";
   import branding from "$lib/branding";
-  import { get } from "$lib/api";
 
   export let addresses, titles;
 
@@ -95,7 +95,7 @@
 
 <svelte:window bind:scrollY={y} />
 
-{#if !($page.path.includes("/a/") && $page.path.split("/").length === 3)}
+{#if !($page.url.pathname.includes("/a/") && $page.url.pathname.split("/").length === 3)}
   <Head metadata={branding.meta} />
 {/if}
 

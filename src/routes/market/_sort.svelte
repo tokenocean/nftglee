@@ -14,6 +14,7 @@
     <option value="lowest">Lowest price</option>
     <option value="highest">Highest price</option>
     <option value="ending_soon">Ending soon</option>
+    <option value="most_viewed">Most viewed</option>
   </select>
 </div>
 

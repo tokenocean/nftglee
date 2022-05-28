@@ -21,7 +21,6 @@
     );
 
     return {
-      maxage: 90,
       props: {
         artwork,
         default_royalty_recipients,

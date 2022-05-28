@@ -10,7 +10,6 @@ import shim from "@asoltys/vite-plugin-stream-shim";
 export default {
   kit: {
     adapter: node(),
-    target: "#svelte",
     vite: {
       plugins: [shim()],
       resolve: {
