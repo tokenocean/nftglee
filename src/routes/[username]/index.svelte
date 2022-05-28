@@ -224,6 +224,12 @@
               {:else}
                 <div class="mx-auto">No creations yet</div>
               {/each}
+              {#if $artworksLimit !== undefined && subject.creations.length}
+                <button
+                  class="primary-btn w-full"
+                  on:click={() => goto(`/artist/${subject.username}`)}>Show all</button
+                >
+              {/if}
             </div>
           </div>
         {:else if tab === 'collection'}
@@ -236,6 +242,12 @@
               {:else}
                 <div class="mx-auto">Nothing collected yet</div>
               {/each}
+              {#if $artworksLimit !== undefined && subject.holdings.length}
+                <button
+                  class="primary-btn w-full"
+                  on:click={() => goto(`/${subject.username}/collection`)}>Show all</button
+                >
+              {/if}
             </div>
           </div>
         {:else if tab === 'offers'}
