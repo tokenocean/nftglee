@@ -65,7 +65,7 @@
 
   let authCheck = async () => {
     try {
-      if ($session.user) {
+      if ($session && $session.user) {
         checkAuthFromLocalStorage($session.user);
       }
     } catch (e) {

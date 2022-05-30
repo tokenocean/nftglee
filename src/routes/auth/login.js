@@ -14,7 +14,6 @@ export async function post({ locals, request }) {
 
     let tokenExpiry = parseInt(jwt_expires_in / 1000);
 
-    console.log(getUser, tokenExpiry, jwt_token);
     let { currentuser } = await q(getUser, undefined, {
       authorization: `Bearer ${jwt_token}`,
     });
