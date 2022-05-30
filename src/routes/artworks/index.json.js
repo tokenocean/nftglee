@@ -1,4 +1,4 @@
-import { countArtworks, getLimited } from "$queries/artworks";
+import { countArtworks, getActive } from "$queries/artworks";
 import { hbp } from "$lib/api";
 
 export async function post({ request, locals }) {
@@ -9,16 +9,36 @@ export async function post({ request, locals }) {
       limit = 210,
       offset = 0,
       where = {},
-      order_by = { created_at: "desc" },
+      order_by = [{ created_at: "desc" }],
+      distinct_on = [],
     } = body;
 
-    let { artworks_aggregate: a } = await q(countArtworks, { where });
-    let { artworks } = await q(getLimited, { limit, offset, order_by, where });
+    if (!Array.isArray(order_by)) order_by = [order_by];
+
+    where.asking_asset = { _is_null: false };
+
+    let artworks;
+    where.artwork = {};
+    Object.keys(where).map((k) => {
+      if (k === "artwork") return;
+      where["artwork"][k] = where[k];
+      delete where[k];
+    });
+    order_by = order_by.map((k) => ({ artwork: k }));
+
+    let { activeartworks } = await q(getActive, {
+      where,
+      limit,
+      offset,
+      order_by,
+    });
+
+    artworks = activeartworks.map(({ artwork }) => artwork);
 
     return {
       body: {
         artworks,
-        total: a.aggregate.count,
+        total: artworks.length,
       },
     };
   } catch (e) {

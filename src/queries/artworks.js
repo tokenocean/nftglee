@@ -147,6 +147,19 @@ export const getLimited = `query($where: artworks_bool_exp!, $limit: Int, $offse
   }
 }`;
 
+
+export const getActive = `query($where: activeartworks_bool_exp!, $limit: Int, $offset: Int, $order_by: [activeartworks_order_by]) {
+ activeartworks(where: $where, limit: $limit, offset: $offset, order_by: $order_by) {
+   artwork {
+      ${fields}
+      is_locked
+      tags {
+        tag
+      }
+    }
+  }
+}`;
+
 export const getArtworks = `query($where: artworks_bool_exp!, $limit: Int, $offset: Int, $order_by: artworks_order_by!) {
  artworks(where: $where, limit: $limit, offset: $offset, order_by: [$order_by]) {
     ${fields}
