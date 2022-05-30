@@ -1,20 +1,12 @@
-FROM node:17-alpine
+FROM gcr.io/coinos-326717/github.com/tokenocean/raretoshi:base
 
 ENV NODE_ENV staging
 
-RUN apk add git python3
-RUN npm i -g pnpm
-
 WORKDIR /app
-
-COPY package.json .
-RUN NODE_ENV=development pnpm i
-
 COPY . .
-RUN NODE_ENV=development pnpm i
+RUN sed -i '/cypress/d' package.json
+RUN sed -i 's/raretoshi.com/raretoshi.blockstream.com/g' .env.production
+RUN mv /deps/node_modules /app
 RUN pnpm build
-
-RUN cat build/middlewares.js >> shim.js
-RUN mv shim.js build/middlewares.js
 
 CMD ["node", "build"]
