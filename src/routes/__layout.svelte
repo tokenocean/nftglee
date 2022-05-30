@@ -37,25 +37,37 @@
   import { Sidebar, Navbar, Dialog, Footer, Snack, Head } from "$comp";
   import PageLoadIndicator from "$lib/header/PageLoadIndicator.svelte";
   import {
-    addresses as a,
     meta,
-    titles as t,
-    user,
+    popup as p,
     password,
+    prompt,
     poll,
+    user,
     token,
   } from "$lib/store";
   import { onDestroy, onMount } from "svelte";
   import branding from "$lib/branding";
+  import { checkAuthFromLocalStorage } from "$lib/auth";
 
-  export let addresses, titles;
+  export let popup;
+  let unsubscribeFromSession;
+  let refreshInterval;
+  let authCheckInterval;
 
-  let interval;
-  let refresh = async () => {
+  let refresh = async () => refresh = async () => {
     try {
-      let { jwt_token } = await get("/auth/refresh.json", fetch).json();
+      let { jwt_token } = await get("/auth/refresh.json", fetch);
       $token = jwt_token;
-      if (!$token && $session) delete $session.user;
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  let authCheck = async () => {
+    try {
+      if ($session.user) {
+        checkAuthFromLocalStorage($session.user);
+      }
     } catch (e) {
       console.log(e);
     }
@@ -69,24 +81,32 @@
       },
     });
 
-    $a = addresses;
-    $t = titles;
+    $p = popup;
+    $user = $session.user;
+    $token = $session.jwt;
 
-    if ($session) {
-      $user = $session.user;
-      $token = $session.jwt;
-    }
+    refreshInterval = setInterval(refresh, 720000);
+    authCheckInterval = setInterval(authCheck, 5000);
 
-    interval = setInterval(refresh, 60000);
+    unsubscribeFromSession = session.subscribe((value) => {
+      value.user && checkAuthFromLocalStorage(value.user);
+    });
   }
 
   let open = false;
   let y;
 
-  let stopPolling = () => $poll.map(clearInterval);
+  let stopPolling = () => {
+    $poll.map(clearInterval);
+    $prompt = false;
+  };
   $: stopPolling($page);
 
-  onDestroy(() => clearInterval(interval));
+  onDestroy(() => {
+    clearInterval(refreshInterval);
+    clearInterval(authCheckInterval);
+    unsubscribeFromSession && unsubscribeFromSession();
+  });
   onMount(() => {
     if (browser && !$password)
       $password = window.sessionStorage.getItem("password");

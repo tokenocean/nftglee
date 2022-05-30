@@ -2,7 +2,7 @@ table:
   schema: public
   name: utxos
 object_relationships:
-  - name: transaction
+  - name: tx
     using:
       foreign_key_constraint_on: transaction_id
   - name: user

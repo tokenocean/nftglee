@@ -137,6 +137,7 @@ insert_permissions:
         - extension_interval
         - filename
         - filetype
+        - held
         - id
         - instagram
         - is_physical
@@ -290,6 +291,7 @@ update_permissions:
         - edition
         - editions
         - extension_interval
+        - held
         - id
         - instagram
         - is_physical

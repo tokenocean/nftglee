@@ -14,6 +14,7 @@ select_permissions:
         - display_name
         - email
         - full_name
+        - has_samples
         - id
         - info
         - instagram
@@ -22,6 +23,7 @@ select_permissions:
         - location
         - mnemonic
         - multisig
+        - prompt_sign
         - pubkey
         - twitter
         - updated_at

@@ -1,13 +1,11 @@
 <script context="module">
-  import { post } from "$lib/api";
+  import { api, post } from "$lib/api";
   import { browser } from "$app/env";
   import branding from "$lib/branding";
   import { host } from "$lib/utils";
+  import Comments from "./_comments.svelte";
 
-  export async function load({
-    fetch,
-    params: { slug },
-  }) {
+  export async function load({ fetch, params: { slug } }) {
     const props = await fetch(`/artworks/${slug}.json`).then((r) => r.json());
 
     let { artwork } = props;
@@ -17,6 +15,7 @@
         status: 404,
       };
 
+    await post("/artworks/held", { id: artwork.id }, fetch).res();
     if (!browser) {
       try {
         await post("/artworks/viewed", { id: artwork.id }, fetch).res();
@@ -32,10 +31,12 @@
     metadata.title = metadata.title + " - " + artwork.title;
     metadata.keywords =
       metadata.keywords + " " + artwork.tags.map((t) => t.tag).join(" ");
-    metadata.description = artwork.description;
+    metadata.description = artwork.description.replace(/(?:\r\n|\r|\n)/g, " ");
 
     let type = "image";
+    metadata[type] = `${host}/api/public/${artwork.filename}.png`;
     if (artwork.filetype.includes("video")) type = "video";
+
     metadata[type] = `${host}/api/public/${artwork.filename}.${
       artwork.filetype.split("/")[1]
     }`;
@@ -49,14 +50,16 @@
 </script>
 
 <script>
+  import { session } from "$app/stores";
   import Fa from "svelte-fa";
   import {
     faChevronDown,
     faChevronUp,
     faTimes,
   } from "@fortawesome/free-solid-svg-icons";
-  import { getArtwork } from "$queries/artworks";
+  import { getArtworkBySlug, deleteArtwork } from "$queries/artworks";
   import { faHeart, faImage } from "@fortawesome/free-regular-svg-icons";
+  import { page } from "$app/stores";
   import { compareAsc, format, parseISO } from "date-fns";
   import {
     Activity,
@@ -68,9 +71,18 @@
   } from "$comp";
   import Sidebar from "./_sidebar.svelte";
   import { tick, onDestroy } from "svelte";
-  import { art, meta, prompt, password, user, token, psbt } from "$lib/store";
+  import { art, meta, prompt, password, psbt, commentsLimit } from "$lib/store";
   import countdown from "$lib/countdown";
-  import { goto, err, explorer, info, linkify, units } from "$lib/utils";
+  import {
+    confirm,
+    goto,
+    err,
+    explorer,
+    info,
+    linkify,
+    units,
+    underway,
+  } from "$lib/utils";
   import { requirePassword } from "$lib/auth";
   import {
     createOffer,
@@ -79,39 +91,44 @@
     sign,
     broadcast,
     releaseToSelf,
+    ACCEPTED,
   } from "$lib/wallet";
   import { Psbt } from "liquidjs-lib";
-  import { api, query } from "$lib/api";
-  import { SocialShare } from "$comp";
+  import { query } from "$lib/api";
 
   export let artwork, others, metadata, views;
 
   let release = async () => {
-    await requirePassword();
+    await requirePassword($session);
     $psbt = await releaseToSelf(artwork);
     $psbt = await sign();
+    $psbt = await requestSignature($psbt);
     await broadcast($psbt);
   };
 
   $: disabled =
     loading ||
-    !artwork ||
+    (artwork.owner_id === $session.user?.id && underway(artwork)) ||
     artwork.transactions.some(
       (t) => ["purchase", "creation", "cancel"].includes(t.type) && !t.confirmed
     );
 
   let start_counter, end_counter, now, timeout;
 
-  let fetch = async () => {
-    query(getArtwork, { id: artwork.id }).then((res) => {
-      artwork = res.artworks_by_pk;
+  let refreshArtwork = async () => {
+    try {
+      let { artworks } = await query(getArtworkBySlug, {
+        slug: artwork.slug,
+        limit: $commentsLimit,
+      });
+      artwork = artworks[0];
       artwork.views = views;
-
-      $art = artwork;
-    });
+    } catch (e) {
+      console.log(e);
+    }
   };
 
-  let poll = setInterval(fetch, 2500);
+  let poll = setInterval(refreshArtwork, 2500);
 
   onDestroy(() => {
     $art = undefined;
@@ -152,7 +169,7 @@
       transaction.asset = artwork.asset;
       transaction.type = "bid";
 
-      await requirePassword();
+      await requirePassword($session);
 
       $psbt = await createOffer(artwork, transaction.amount);
       $psbt = await sign();
@@ -161,54 +178,15 @@
       transaction.hash = $psbt.data.globalMap.unsignedTx.tx.getId();
 
       await save();
-      await fetch();
+      await refreshArtwork();
 
-      const sortedBidTransactions = artwork.transactions
-        .filter((t) => t.type === "bid")
-        .sort((a, b) => b.amount - a.amount);
-
-      const highestBidTransaction = sortedBidTransactions.length
-        ? sortedBidTransactions[0]
-        : null;
-
-      highestBidTransaction &&
-        highestBidTransaction.user.email &&
-        (await api
-          .url("/mail-outbid")
-          .auth(`Bearer ${$token}`)
-          .post({
-            to: highestBidTransaction.user.email,
-            userName: highestBidTransaction.user.full_name
-              ? highestBidTransaction.user.full_name
-              : "",
-            bidAmount: `${val(transaction.amount)} L-BTC`,
-            artworkTitle: artwork.title,
-            artworkUrl: `${branding.urls.protocol}/a/${artwork.slug}`,
-          }));
-
-      $user.email &&
-        (await api
-          .url("/mail-bid-processed")
-          .auth(`Bearer ${$token}`)
-          .post({
-            to: $user.email,
-            userName: $user.full_name ? $user.full_name : "",
-            bidAmount: `${val(transaction.amount)} L-BTC`,
-            artworkTitle: artwork.title,
-            artworkUrl: `${branding.urls.protocol}/a/${artwork.slug}`,
-          }));
-
-      artwork.owner.email &&
-        (await api
-          .url("/mail-someone-bid")
-          .auth(`Bearer ${$token}`)
-          .post({
-            to: artwork.owner.email,
-            userName: artwork.owner.full_name ? artwork.owner.full_name : "",
-            bidAmount: `${val(transaction.amount)} L-BTC`,
-            artworkTitle: artwork.title,
-            artworkUrl: `${branding.urls.protocol}/a/${artwork.slug}`,
-          }));
+      await api
+        .url("/offer-notifications")
+        .auth(`Bearer ${$session.jwt}`)
+        .post({
+          artworkId: artwork.id,
+          transactionHash: transaction.hash,
+        });
 
       offering = false;
     } catch (e) {
@@ -223,7 +201,7 @@
     transaction.asset = artwork.asking_asset;
 
     let { data, errors } = await api
-      .auth(`Bearer ${$token}`)
+      .auth(`Bearer ${$session.jwt}`)
       .url("/transaction")
       .post({ transaction })
       .json();
@@ -245,7 +223,7 @@
   let loading;
   let buyNow = async () => {
     try {
-      await requirePassword();
+      await requirePassword($session);
       loading = true;
 
       transaction.amount = -artwork.list_price;
@@ -266,36 +244,37 @@
       transaction.psbt = $psbt.toBase64();
 
       await save();
-      await fetch();
+      await refreshArtwork();
 
-      $user.email &&
-        (await api
-          .url("/mail-purchase-successful")
-          .auth(`Bearer ${$token}`)
-          .post({
-            to: $user.email,
-            userName: $user.full_name ? $user.full_name : "",
-            bidAmount: `${val(artwork.list_price)} L-BTC`,
-            artworkTitle: artwork.title,
-            artworkUrl: `${branding.urls.protocol}/a/${artwork.slug}`,
-          }));
+      await api
+        .url("/mail-purchase-successful")
+        .auth(`Bearer ${$session.jwt}`)
+        .post({
+          userId: $session.user.id,
+          artworkId: artwork.id,
+        });
 
-      artwork.owner.email &&
-        (await api
-          .url("/mail-artwork-sold")
-          .auth(`Bearer ${$token}`)
-          .post({
-            to: artwork.owner.email,
-            userName: artwork.owner.full_name ? artwork.owner.full_name : "",
-            bidAmount: `${val(artwork.list_price)} L-BTC`,
-            artworkTitle: artwork.title,
-            artworkUrl: `${branding.urls.protocol}/a/${artwork.slug}`,
-          }));
+      await api.url("/mail-artwork-sold").auth(`Bearer ${$session.jwt}`).post({
+        userId: artwork.owner.id,
+        artworkId: artwork.id,
+      });
     } catch (e) {
       err(e);
     }
 
     loading = false;
+  };
+
+  let handleDelete = async () => {
+    try {
+      if ((await confirm()) === ACCEPTED) {
+        await query(deleteArtwork, { id: artwork.id });
+        info("Artwork deleted");
+        goto("/market");
+      }
+    } catch (e) {
+      err(e);
+    }
   };
 
   let showPopup = false;
@@ -389,7 +368,7 @@
 
       {#if loading}
         <ProgressLinear />
-      {:else if $user && $user.id === artwork.owner_id && artwork.held}
+      {:else if $session.user && $session.user.id === artwork.owner_id && artwork.held}
         <div class="w-full mb-2">
           <a
             sveltekit:prefetch
@@ -416,7 +395,7 @@
           >
         </div>
 
-        {#if $user.id === artwork.artist_id}
+        {#if $session.user.id === artwork.artist_id}
           <div class="w-full mb-2">
             <a
               href={`/a/${artwork.slug}/edit`}

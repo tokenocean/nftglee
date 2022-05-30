@@ -6,7 +6,7 @@
     faChevronUp,
   } from "@fortawesome/free-solid-svg-icons";
   import { Avatar, ProgressLinear } from "$comp";
-  import { addresses, psbt, user } from "$lib/store";
+  import { txcache } from "$lib/store";
   import reverse from "buffer-reverse";
   import { electrs } from "$lib/api";
   import {
@@ -15,16 +15,15 @@
     parseVal,
     parseAsset,
     broadcast,
+    network,
     sign,
     requestSignature,
   } from "$lib/wallet";
-  import { requirePassword } from "$lib/auth";
-  import { Psbt, Transaction } from "liquidjs-lib";
+  import { address as Address, Psbt, Transaction } from "liquidjs-lib";
   import {
     explorer,
     addressLabel,
     addressUser,
-    artworkId,
     assetLabel,
     copy,
     ticker,
@@ -35,175 +34,158 @@
     err,
   } from "$lib/utils";
 
-  export let tx = undefined;
-  export let debug = false;
+  export let summary = false;
+  export let psbt;
 
-  let ins, outs, totals, senders, recipients, showDetails, users, lock, pp, uu;
-  let loading;
-  $: init($psbt, $user, $addresses, tx);
+  let ins,
+    outs,
+    totals,
+    senders,
+    recipients,
+    showDetails,
+    users,
+    loading,
+    pp,
+    uu;
+
+  let labels = {};
   let retries = 0;
+  let { tx } = psbt.data.globalMap.unsignedTx;
+
+  $: init(psbt);
   let init = async (p, u) => {
-    if (lock) return setTimeout(() => init(p, u), 50);
-    lock = true;
-    p = $psbt;
-    u = $user;
-    if (!p) return (lock = false);
+    try {
+      if (loading) return setTimeout(() => init(p, u), 50);
+      loading = true;
+      if (!p) return (loading = false);
 
-    ins = [];
-    outs = [];
+      ins = [];
+      outs = [];
 
-    if (!tx) {
-      try {
-        tx = p.extractTransaction();
-      } catch (e) {
-        tx = p.data.globalMap.unsignedTx.tx;
-      }
-    }
-
-    totals = {};
-    senders = {};
-    recipients = {};
-    users = {};
-
-    for (let i = 0; i < tx.ins.length; i++) {
-      let { hash, index } = tx.ins[i];
-      let txid = reverse(hash).toString("hex");
-      let input = (await electrs.url(`/tx/${txid}`).get().json()).vout[index];
-      input.spent = (
-        await electrs.url(`/tx/${txid}/outspend/${index}`).get().json()
-      ).spent;
-
-      input.signed =
-        p.data.inputs[i] &&
-        (!!p.data.inputs[i].partialSig || !!p.data.inputs[i].finalScriptSig);
-      input.pSig = p.data.inputs[i] && !!p.data.inputs[i].partialSig;
-      input.txid = txid;
-      input.index = index;
-
-      ins = [...ins, input];
-
-      let { asset, scriptpubkey_address: address } = input;
-      let username = addressLabel(address);
-      users[username] = addressUser(address);
-
-      if (!totals[username]) totals[username] = {};
-      if (!totals[username][asset]) totals[username][asset] = 0;
-      totals[username][asset] += input.value;
-      senders[username] = true;
-    }
-
-    for (let j = 0; j < tx.outs.length; j++) {
-      let out = tx.outs[j];
+      totals = {};
+      senders = {};
+      recipients = {};
+      users = {};
 
       let address, asset, value;
 
-      asset = parseAsset(out.asset);
-      value = parseVal(out.value);
+      for (let i = 0; i < tx.ins.length; i++) {
+        let { hash, index } = tx.ins[i];
+        let txid = reverse(hash).toString("hex");
 
-      try {
-        address = getAddress(out);
-      } catch (e) {
-        if (!out.script.length) address = "Fee";
-        else {
-          outs = [
-            ...outs,
-            {
-              value,
-              asset,
-              address: "",
-            },
-          ];
-          continue;
-        }
+        let prev = ($txcache[txid] || (await getTx(txid))).outs[index];
+
+        asset = parseAsset(prev.asset);
+        address = Address.fromOutputScript(prev.script, network);
+        value = parseVal(prev.value);
+
+        let { spent } = await electrs
+          .url(`/tx/${txid}/outspend/${index}`)
+          .get()
+          .json();
+
+        let input = {
+          address,
+          asset,
+          signed:
+            p.data.inputs[i] &&
+            (!!p.data.inputs[i].partialSig ||
+              !!p.data.inputs[i].finalScriptSig),
+          pSig: p.data.inputs[i] && !!p.data.inputs[i].partialSig,
+          index,
+          spent,
+          txid,
+          value,
+        };
+
+        ins = [...ins, input];
+
+        let username = await addressLabel(address);
+        users[username] = await addressUser(address);
+
+        if (!totals[username]) totals[username] = {};
+        if (!totals[username][asset]) totals[username][asset] = 0;
+        totals[username][asset] += value;
+        senders[username] = true;
       }
 
-      let username = addressLabel(address);
-      users[username] = addressUser(address);
+      for (let j = 0; j < tx.outs.length; j++) {
+        let out = tx.outs[j];
 
-      if (!totals[username]) totals[username] = {};
-      if (!totals[username][asset]) totals[username][asset] = 0;
-      totals[username][asset] -= value;
-      if (totals[username][asset] < 0) recipients[username] = true;
+        asset = parseAsset(out.asset);
+        value = parseVal(out.value);
 
-      outs = [
-        ...outs,
-        {
-          value,
-          asset,
-          address,
-        },
-      ];
-    }
+        try {
+          address = getAddress(out);
+        } catch (e) {
+          if (!out.script.length) address = "Fee";
+          else {
+            outs = [
+              ...outs,
+              {
+                value,
+                asset,
+                address: "",
+              },
+            ];
+            continue;
+          }
+        }
 
-    lock = false;
-  };
+        let username = await addressLabel(address);
+        users[username] = await addressUser(address);
 
-  let clear = () => {
-    base64 = undefined;
-    $psbt = undefined;
-    tx = undefined;
-  };
+        if (!totals[username]) totals[username] = {};
+        if (!totals[username][asset]) totals[username][asset] = 0;
+        totals[username][asset] -= value;
+        if (totals[username][asset] < 0) recipients[username] = true;
 
-  let parse = () => (base64 = x);
+        outs = [
+          ...outs,
+          {
+            value,
+            asset,
+            address,
+          },
+        ];
+      }
 
-  let base64;
-  let x;
-  $: read(base64);
-  let read = async (base64) => {
-    if (base64) {
-      tx = undefined;
-      $psbt = Psbt.fromBase64(base64);
-      await init($psbt, $user);
-    }
-  };
+      let assets = [...new Set([...ins, ...outs].map((o) => o.asset))];
+      for (let i = 0; i < assets.length; i++) {
+        let asset = assets[i];
+        labels[asset] = (await assetLabel(asset)) || ticker(asset);
+      }
 
-  let signTx = async () => {
-    await requirePassword();
-    $psbt = await sign();
-    try {
-      $psbt = await requestSignature($psbt);
+      loading = false;
     } catch (e) {
-      console.log(`Couldn't get server signature: ${e.message}`);
-    }
-    info("Signed");
-  };
-
-  let broadcastTx = async () => {
-    try {
-      await broadcast(true);
-    } catch (e) {
+      console.log(e);
       err(e);
     }
   };
+
+  let toggleDetails = async () => (showDetails = !showDetails);
 </script>
 
-{#if debug}
-  {#if tx}
-    <div class="flex">
-      <button on:click={clear} class="secondary-btn mr-2">Clear</button>
-      <button on:click={signTx} class="secondary-btn mr-2">Sign</button>
-      <button on:click={broadcastTx} class="secondary-btn">Broadcast</button>
-    </div>
-  {:else}
-    <textarea bind:value={x} class="w-full" rows={14} />
-    <div class="flex">
-      <button on:click={parse} class="secondary-btn mr-2">Parse</button>
-    </div>
-  {/if}
-{/if}
-
-{#if $addresses && tx}
+{#if loading}
+  <ProgressLinear />
+{:else}
   <div class="w-full mx-auto">
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div
+      class="grid grid-cols-1 gap-4"
+      class:sm:grid-cols-2={!summary}
+      class:mt-10={summary}
+    >
       <div>
-        <h4 class="mb-2">Sending</h4>
-        {#each Object.keys(totals) as username}
-          {#if senders[username] && username !== "Fee"}
-            {#each Object.keys(totals[username]) as asset}
-              {#if totals[username][asset] > 0}
-                <div class="flex mb-2">
+        <div class="grid grid-cols-3 mb-4">
+          <h4 class="mb-2 text-xs text-gray-400">Sending</h4>
+          <h4 class="mb-2 text-xs text-gray-400 text-right">Amount</h4>
+          <h4 class="mb-2 text-xs text-gray-400 text-right">Asset</h4>
+          {#each Object.keys(totals) as username}
+            {#if senders[username] && username !== "Fee"}
+              {#each Object.keys(totals[username]) as asset}
+                {#if totals[username][asset] > 0}
                   {#if users[username]}
-                    <div class="my-auto flex w-48">
+                    <div class="my-auto flex mb-1">
                       <div class="flex">
                         {#if users[username]}
                           <Avatar
@@ -218,10 +200,7 @@
                         {/if}
                       </div>
                       <div class="my-auto ml-2 truncate">
-                        <a
-                          href={`/u/${username.replace(" 2of2", "")}`}
-                          class="secondary-color"
-                        >
+                        <a href={`/${username.replace(" 2of2", "")}`}>
                           {username}
                         </a>
                       </div>
@@ -229,30 +208,34 @@
                   {:else}
                     <div>{username}</div>
                   {/if}
-                  <div class="flex my-auto ml-auto w-48">
-                    {#if val(asset, Math.abs(totals[username][asset])) !== "1"}
-                      <div class="mr-1 ml-auto">
-                        {val(asset, Math.abs(totals[username][asset]))}
-                      </div>
-                    {/if}
-                    <div class="truncate ml-auto mr-2">{assetLabel(asset)}</div>
+                  <div class="my-auto ml-auto">
+                    <div class="mr-1 ml-auto">
+                      {parseFloat(
+                        val(asset, Math.abs(totals[username][asset]))
+                      ).toFixed(8)}
+                    </div>
                   </div>
-                </div>
-              {/if}
-            {/each}
-          {/if}
-        {/each}
+                  <div class="truncate ml-2 my-auto w-full text-right">
+                    {labels[asset]}
+                  </div>
+                {/if}
+              {/each}
+            {/if}
+          {/each}
+        </div>
       </div>
 
       <div>
-        <h4 class="mb-2">Receiving</h4>
-        {#each Object.keys(totals) as username}
-          {#if recipients[username] && username !== "Fee"}
-            {#each Object.keys(totals[username]) as asset}
-              {#if totals[username][asset] < 0}
-                <div class="flex mb-2">
+        <div class="grid grid-cols-3 mb-4">
+          <h4 class="mb-2 text-xs text-gray-400">Receiving</h4>
+          <h4 class="mb-2 text-xs text-gray-400 text-right">Amount</h4>
+          <h4 class="mb-2 text-xs text-gray-400 text-right">Asset</h4>
+          {#each Object.keys(totals) as username}
+            {#if recipients[username] && username !== "Fee"}
+              {#each Object.keys(totals[username]) as asset}
+                {#if totals[username][asset] < 0}
                   {#if users[username]}
-                    <div class="my-auto flex w-48">
+                    <div class="my-auto flex mb-1">
                       <div class="flex">
                         {#if users[username]}
                           <Avatar
@@ -267,10 +250,7 @@
                         {/if}
                       </div>
                       <div class="my-auto ml-2 truncate">
-                        <a
-                          href={`/u/${username.replace(" 2of2", "")}`}
-                          class="secondary-color"
-                        >
+                        <a href={`/${username.replace(" 2of2", "")}`}>
                           {username}
                         </a>
                       </div>
@@ -278,59 +258,48 @@
                   {:else}
                     <div>{username}</div>
                   {/if}
-                  <div class="flex my-auto ml-auto w-48">
-                    {#if val(asset, Math.abs(totals[username][asset])) !== "1"}
-                      <div class="mr-1 ml-auto">
-                        {val(asset, Math.abs(totals[username][asset]))}
-                      </div>
-                    {/if}
-                    <div class="truncate ml-auto mr-2">{assetLabel(asset)}</div>
+                  <div class="my-auto ml-auto">
+                    <div class="mr-1 ml-auto">
+                      {parseFloat(
+                        val(asset, Math.abs(totals[username][asset]))
+                      ).toFixed(8)}
+                    </div>
                   </div>
-                </div>
-              {/if}
-            {/each}
-          {/if}
-        {/each}
-
+                  <div class="truncate ml-2 my-auto w-full text-right">
+                    {labels[asset]}
+                  </div>
+                {/if}
+              {/each}
+            {/if}
+          {/each}
         {#if totals["Fee"]}
-          <h4 class="mt-6 mb-2 text-right">Fee</h4>
-          <div class="text-right">
-            {val(btc, Math.abs(totals["Fee"][btc]))}
-            L-BTC
+          <div class="flex">
+            <Avatar src="/liquid.jpg" />
+            <div class="my-auto ml-2 truncate">liquid fee</div>
           </div>
+          <div class="my-auto ml-auto">
+            {val(btc, Math.abs(totals["Fee"][btc]))}
+          </div>
+          <div class="truncate ml-2 my-auto text-right w-full">L-BTC</div>
         {/if}
+        </div>
+
       </div>
     </div>
 
     {#if showDetails}
-      <div
-        class="text-xs my-6 cursor-pointer"
-        on:click={() => (showDetails = !showDetails)}
-      >
-        <div class="flex">
-          <div>Hide details</div>
-          <div class="my-auto ml-1">
-            <Fa icon={faChevronUp} />
-          </div>
-        </div>
+      <div class="my-6 cursor-pointer" on:click={toggleDetails}>
+        <button class="secondary-btn w-full"> Hide details</button>
       </div>
     {:else}
-      <div
-        class="text-xs my-6 cursor-pointer"
-        on:click={() => (showDetails = !showDetails)}
-      >
-        <div class="flex">
-          <div>Show details</div>
-          <div class="my-auto ml-1">
-            <Fa icon={faChevronDown} />
-          </div>
-        </div>
+      <div class="my-6 cursor-pointer" on:click={toggleDetails}>
+        <button class="secondary-btn w-full"> Show details </button>
       </div>
     {/if}
 
     {#if showDetails}
       <div class="text-sm break-all text-wrap">
-        <div class="font-bold text-xs">Transaction ID</div>
+        <div class="text-gray-400 text-xs">Transaction ID</div>
         <div class="mb-4 p-4">
           {#if ins.find((i) => !i.signed || i.pSig)}
             {tx.getId()}
@@ -347,58 +316,60 @@
 
         <div class="flex mb-2">
           <div class="w-1/2">
-            <div class="font-bold text-xs">Size</div>
+            <div class="text-gray-400 text-xs">Size</div>
             <div class="p-4">{tx.virtualSize()} bytes</div>
           </div>
           <div class="w-1/2">
-            <div class="font-bold text-xs">Weight</div>
+            <div class="text-gray-400 text-xs">Weight</div>
             <div class="p-4">{tx.weight()} vbytes</div>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 gap-4" class:sm:grid-cols-2={!summary}>
           <div>
-            <div class="font-bold text-xs">Inputs</div>
+            <div class="text-gray-400 text-xs mb-2">Inputs</div>
 
             {#each ins as input, i}
-              <div class="mb-2 p-4">
-                <div class="mb-2">Index: {i}</div>
+              <div class="mb-2 p-4 border">
+                <div class="ml-auto text-xs text-gray-400 text-right">{i}</div>
 
-                <div class="mb-2">
-                  Status:
-                  {input.signed
-                    ? input.pSig
-                      ? "Partially signed"
-                      : "Fully signed"
-                    : "Unsigned"}
-                  -
-                  {input.spent ? "Spent" : "Unspent"}
+                <div class="mb-2 grid grid-cols-2">
+                  {#if input.value}
+                    <div>
+                      <div class="text-gray-400 text-xs">Value</div>
+                      {input.value}
+                    </div>
+                  {/if}
+                  <div>
+                    <div class="text-gray-400 text-xs">Status</div>
+                    {input.signed
+                      ? input.pSig
+                        ? "Partially signed"
+                        : "Fully signed"
+                      : "Unsigned"}
+                    /
+                    {input.spent ? "Spent" : "Unspent"}
+                  </div>
                 </div>
-
-                <div class="mb-2">
-                  Prevout:
-                  <a
-                    class="secondary-color"
-                    href={`${explorer}/tx/${input.txid}?output:${input.index}`}
-                    >{input.txid}:{input.index}</a
-                  >
-                </div>
-
-                {#if input.value && input.asset}
+                {#if input.asset}
                   <div class="mb-2">
-                    {input.value}
-                    <a
-                      href={`${explorer}/asset/${input.asset}`}
-                      class="secondary-color">{input.asset}</a
+                    <div class="text-gray-400 text-xs">Asset</div>
+                    <a href={`${explorer}/asset/${input.asset}`}
+                      >{input.asset}</a
                     >
                   </div>
                 {/if}
 
+                <div class="text-gray-400 text-xs">Address</div>
                 <div class="mb-2">
-                  Address:
-                  <a
-                    href={`${explorer}/address/${input.scriptpubkey_address}`}
-                    class="secondary-color">{input.scriptpubkey_address}</a
+                  <a href={`${explorer}/address/${input.address}`}
+                    >{input.address}</a
+                  >
+                </div>
+                <div class="mb-2">
+                  <div class="text-gray-400 text-xs">Prevout</div>
+                  <a href={`${explorer}/tx/${input.txid}?output:${input.index}`}
+                    >{input.txid}:{input.index}</a
                   >
                 </div>
               </div>
@@ -406,29 +377,33 @@
           </div>
 
           <div>
-            <div class="font-bold text-xs">Outputs</div>
+            <div class="text-gray-400 text-xs mb-2">Outputs</div>
             {#each outs as out, i}
               {#if out}
-                <div class="mb-2 p-4">
-                  <div class="mb-2">Index: {i}</div>
+                <div class="mb-2 p-4 border">
+                  <div class="ml-auto text-xs text-gray-400 text-right">
+                    {i}
+                  </div>
                   {#if out.value && out.asset}
                     <div class="mb-2">
+                      <div class="text-gray-400 text-xs">Value</div>
                       {out.value}
-                      <a
-                        href={`${explorer}/asset/${out.asset}`}
-                        class="secondary-color">{out.asset}</a
-                      >
+                    </div>
+                    <div class="mb-2">
+                      <div class="text-gray-400 text-xs">Asset</div>
+                      <a href={`${explorer}/asset/${out.asset}`}>{out.asset}</a>
                     </div>
                   {/if}
                   <div>
                     {#if out.address === "Fee"}
-                      Fee
-                    {:else}
-                      Address:
-                      <a
-                        href={`${explorer}/address/${out.address}`}
-                        class="secondary-color">{out.address}</a
+                      <div class="text-gray-400 text-xs">Fee</div>
+                    {:else if out.value}
+                      <div class="text-gray-400 text-xs">Address</div>
+                      <a href={`${explorer}/address/${out.address}`}
+                        >{out.address}</a
                       >
+                    {:else}
+                      <div class="text-gray-400 text-xs">OP Return</div>
                     {/if}
                   </div>
                 </div>
@@ -436,16 +411,16 @@
             {/each}
           </div>
         </div>
-        <button
-          class="secondary-btn mb-2"
-          on:click={() => copy($psbt.toBase64())}>Copy PSBT Base64</button
-        >
-        <button class="primary-btn mb-2a" on:click={() => copy(tx.toHex())}
-          >Copy Tx Hex</button
-        >
+        <div class="grid grid-cols-2 gap-4">
+          <button
+            class="secondary-btn mb-2"
+            on:click={() => copy(psbt.toBase64())}>Copy PSBT Base64</button
+          >
+          <button class="secondary-btn mb-2" on:click={() => copy(tx.toHex())}
+            >Copy Tx Hex</button
+          >
+        </div>
       </div>
     {/if}
   </div>
-{:else if !debug}
-  <ProgressLinear />
 {/if}

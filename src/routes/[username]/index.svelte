@@ -1,8 +1,7 @@
 <script context="module">
-  export async function load({ fetch, page }) {
-    try {
+  export async function load({ fetch, params }) {
       const { subject } = await fetch(
-        `/${page.params.username}.json`
+        `/${params.username}.json`
       ).then((r) => {
         if (r.ok) return r.json();
         throw new Error("not ok");
@@ -13,9 +12,6 @@
           subject,
         },
       };
-    } catch (e) {
-      console.log(e);
-    }
   }
 </script>
 

@@ -28,6 +28,7 @@ export let auth = {
 
 app.post("/login", async (req, res) => {
   let { email, password } = req.body;
+
   try {
     let user;
     let { users } = await q(getUserByEmail, { email });
@@ -36,14 +37,15 @@ app.post("/login", async (req, res) => {
       user = users[0];
       email = user.display_name;
     } else {
-      throw new Error();
+      throw new Error("login failed");
     }
 
     let response = await hbp.url("/auth/login").post({ email, password }).res();
     Array.from(response.headers.entries()).forEach(([k, v]) =>
       res.header(k, v)
     );
-    res.send(await response.json());
+    let json = await response.json();
+    res.send(json);
   } catch (e) {
     let msg = "Login failed";
     if (e.message.includes("activated"))

@@ -1,24 +1,37 @@
 import { fade as svelteFade } from "svelte/transition";
 import { get } from "svelte/store";
 import {
-  addresses,
+  acceptStatus,
   assets,
   error,
   full,
   prompt,
   snack,
-  titles,
+  user,
 } from "$lib/store";
 import { goto as svelteGoto } from "$app/navigation";
+import { AcceptPrompt, InsufficientFunds } from "$comp";
+import { isWithinInterval, parseISO, compareAsc } from "date-fns";
+import { query } from "$lib/api";
+import { getArtworkByAsset } from "$queries/artworks.js";
+import { getUserByAddress } from "$queries/users.js";
 
-const btc = import.meta.env.VITE_BTC;
-const cad = import.meta.env.VITE_CAD;
-const usd = import.meta.env.VITE_USD;
-const host = import.meta.env.VITE_HOST;
+export const btc = import.meta.env.VITE_BTC;
+export const cad = import.meta.env.VITE_CAD;
+export const usd = import.meta.env.VITE_USD;
+export const host = import.meta.env.VITE_HOST;
+export const label = ({ asset, name }, field = "ticker") =>
+  name || (asset
+    ? tickers[asset]
+      ? tickers[asset][field]
+      : asset.substr(0, 5)
+    : "");
 
-const fade = (n, o) => svelteFade(n, { ...o, duration: 50 });
+export const sleep = (n) => new Promise((r) => setTimeout(r, n));
 
-const publicPages = [
+export const fade = (n, o) => svelteFade(n, { ...o, duration: 50 });
+
+export const publicPages = [
   "login",
   "register",
   "activate",
@@ -29,51 +42,51 @@ const publicPages = [
   "activate",
 ];
 
-const royaltyRecipientSystemType = "system";
-const royaltyRecipientIndividualType = "individual";
+export const confirm = async () => {
+  acceptStatus.set(false);
 
-const royaltyRecipientTypes = {
+  return await new Promise((resolve) =>
+    acceptStatus.subscribe((acceptedSub) => {
+      acceptedSub ? resolve(acceptedSub) : prompt.set(AcceptPrompt);
+    })
+  );
+};
+
+export const royaltyRecipientSystemType = "system";
+export const royaltyRecipientIndividualType = "individual";
+
+export const royaltyRecipientTypes = {
   [royaltyRecipientSystemType]: "System",
   [royaltyRecipientIndividualType]: "Individual",
 };
 
-const addressUser = (a) =>
-  get(addresses) &&
-  get(addresses).find((u) => u.address === a || u.multisig === a);
+export const addressUser = async (address) => {
+  const { users } = await query(getUserByAddress, { address });
+  return users.length ? users[0] : undefined;
+};
 
-const addressLabel = (address) => {
-  let $addresses = get(addresses);
-
-  let r;
-
-  if ($addresses) {
-    r = $addresses.find((u) => u.multisig === address);
-    if (r) return r.username + " 2of2";
-    r = $addresses.find((u) => u.address === address);
-    if (r) return r.username;
+export const addressLabel = async (address) => {
+  const { users } = await query(getUserByAddress, { address });
+  if (users.length) {
+    let user = users[0];
+    return user.address === address ? user.username : user.username + " 2of2";
   }
 
   return address.length > 6 ? address.substr(0, 6) + "..." : address;
 };
 
-const assetLabel = (asset) => {
-  let $titles = get(titles);
-  let r = $titles && $titles.find((u) => u.asset === asset);
+export const assetLabel = async (asset) => {
+  const { artworks } = await query(getArtworkByAsset, { asset });
 
-  return r
-    ? r.title
+  if (artworks.length) {
+    let r = artworks[0];
+    return r.title
       ? r.title + (r.editions > 1 ? ` ${r.edition}/${r.editions}` : "")
-      : r.name || "Untitled"
-    : ticker(asset);
+      : "Untitled";
+  }
 };
 
-const artworkId = (asset) => {
-  let $titles = get(titles);
-  let r = $titles && $titles.find((u) => u.asset === asset);
-  return r && r.id;
-};
-
-const tickers = {
+export const tickers = {
   [btc]: {
     name: "Liquid BTC",
     ticker: "L-BTC",
@@ -94,7 +107,7 @@ const tickers = {
   },
 };
 
-const ticker = (asset) => {
+export const ticker = (asset) => {
   return asset
     ? tickers[asset]
       ? tickers[asset].ticker
@@ -102,7 +115,7 @@ const ticker = (asset) => {
     : "";
 };
 
-const units = (asset) => {
+export const units = (asset) => {
   let decimals = 0;
   let precision = 0;
   if (tickers[asset]) ({ decimals, precision } = tickers[asset]);
@@ -113,17 +126,17 @@ const units = (asset) => {
   ];
 };
 
-const sats = (asset, val) => units(asset)[0](val);
-const val = (asset, sats) => units(asset)[1](sats);
+export const sats = (asset, val) => units(asset)[0](val);
+export const val = (asset, sats) => units(asset)[1](sats);
 
-const goto = (path) => {
+export const goto = (path) => {
   svelteGoto(path);
   if (window) window.history.pushState(null, null, path);
 };
 
-const explorer = import.meta.env.VITE_EXPLORER;
+export const explorer = import.meta.env.VITE_EXPLORER;
 
-const copy = (v) => {
+export const copy = (v) => {
   let textArea = document.createElement("textarea");
   textArea.style.position = "fixed";
   textArea.value = v;
@@ -139,10 +152,10 @@ const copy = (v) => {
   info("Copied!");
 };
 
-const pick = (obj, ...keys) =>
+export const pick = (obj, ...keys) =>
   Object.fromEntries(Object.entries(obj).filter(([key]) => keys.includes(key)));
 
-const err = (e) => {
+export const err = (e) => {
   if (typeof e === "string") e = { message: e };
   error.set(e);
   let msg = e.message;
@@ -154,18 +167,18 @@ const err = (e) => {
   } catch {}
   if (!msg) msg = "An error occurred";
   if (msg.includes("EPIPE")) return;
-  if (msg.includes("Insufficient")) return;
+  if (msg.includes("Insufficient")) return prompt.set(InsufficientFunds);
   if (msg.includes("socket")) return;
   if (msg.includes("JWT")) return;
   setTimeout(() => snack.set({ msg, type: "error" }), 100);
   if (e.stack) console.log(e.stack);
 };
 
-const info = (msg) => {
+export const info = (msg) => {
   setTimeout(() => snack.set({ msg, type: "info" }), 100);
 };
 
-const fullscreen = (elem) => {
+export const fullscreen = (elem) => {
   if (get(full)) {
     if (document.exitFullscreen) {
       document.exitFullscreen();
@@ -220,25 +233,25 @@ function format(n, p, d) {
   }
 }
 
-const validateEmail = (email) => {
+export const validateEmail = (email) => {
   const re =
     /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
   return re.test(email);
 };
 
-const go = ({ id, type, s }) => {
+export const go = ({ id, type, s }) => {
   let url = { user: "u", artwork: "artwork", tag: "tag" }[type];
   goto(`/${url}/${url === "artwork" ? id : s}`);
 };
 
-const kebab = (str) =>
+export const kebab = (str) =>
   str &&
   str
     .match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)
     .map((x) => x.toLowerCase())
     .join("-");
 
-const etag = async (o) => {
+export const etag = async (o) => {
   let d = await crypto.subtle.digest(
     "SHA-1",
     new TextEncoder().encode(JSON.stringify(o))
@@ -250,9 +263,9 @@ const etag = async (o) => {
     .substring(0, 27);
 };
 
-const dev = import.meta.env.DEV;
+export const dev = import.meta.env.DEV;
 
-const linkify = (text) => {
+export const linkify = (text) => {
   var urlRegex =
     /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gi;
   return text.replace(urlRegex, function (url) {
@@ -271,37 +284,36 @@ function post(endpoint, data) {
   });
 }
 
-export {
-  addressLabel,
-  addressUser,
-  artworkId,
-  assetLabel,
-  btc,
-  cad,
-  copy,
-  dev,
-  etag,
-  err,
-  explorer,
-  fade,
-  fullscreen,
-  goto,
-  go,
-  host,
-  info,
-  linkify,
-  pick,
-  post,
-  sats,
-  kebab,
-  ticker,
-  tickers,
-  units,
-  usd,
-  val,
-  validateEmail,
-  publicPages,
-  royaltyRecipientSystemType,
-  royaltyRecipientIndividualType,
-  royaltyRecipientTypes,
+export const underway = ({ auction_start: s, auction_end: e }) =>
+  e && isWithinInterval(new Date(), { start: parseISO(s), end: parseISO(e) });
+
+export const canCancel = ({ artwork, created_at, type, user: { id } }) => {
+  let $user = get(user);
+
+  return (
+    type === "bid" &&
+    isCurrent(artwork, created_at, type) &&
+    $user &&
+    $user.id === id
+  );
+};
+
+export const isCurrent = ({ transferred_at: t }, created_at, type) =>
+  type === "bid" && (!t || compareAsc(parseISO(created_at), parseISO(t)) > 0);
+
+export const canAccept = ({ type, artwork, created_at, accepted }, debug) => {
+  let $user = get(user);
+  if (accepted) return false;
+
+  let isOwner = ({ owner }) => $user && $user.id === owner.id;
+
+  let underway = ({ auction_start: s, auction_end: e }) =>
+    e && isWithinInterval(new Date(), { start: parseISO(s), end: parseISO(e) });
+
+  return (
+    artwork &&
+    isCurrent(artwork, created_at, type) &&
+    isOwner(artwork) &&
+    !underway(artwork)
+  );
 };

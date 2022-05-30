@@ -1,20 +1,19 @@
 <script context="module">
-  export async function load({ fetch, page, session }) {
-    if (!(session && session.user)) return {
-      status: 302,
-      redirect: '/login'
-    } 
+  export async function load({ fetch, params: { slug }, session }) {
+    if (!(session && session.user))
+      return {
+        status: 302,
+        redirect: "/login",
+      };
 
-    const props = await fetch(`/artworks/${page.params.slug}.json`).then(
-      (r) => r.json()
-    );
+    const props = await fetch(`/artworks/${slug}.json`).then((r) => r.json());
 
-    if (!props.artwork) return {
-      status: 404,
-    } 
+    if (!props.artwork)
+      return {
+        status: 404,
+      };
 
     let { artwork } = props;
-
 
     const { default_royalty_recipients } = await fetch(`/royalties.json`).then(
       (r) => r.json()
@@ -24,34 +23,27 @@
       props: {
         artwork,
         default_royalty_recipients,
+        user: session.user,
       },
     };
   }
-
 </script>
 
 <script>
+  import { browser } from "$app/env";
+  import { session } from "$app/stores";
   import Fa from "svelte-fa";
   import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
   import { faQuestionCircle } from "@fortawesome/free-regular-svg-icons";
   import { Psbt } from "liquidjs-lib";
   import { onMount, tick } from "svelte";
-  import { page } from "$app/stores";
   import {
     updateArtwork,
     updateArtworkWithRoyaltyRecipients,
   } from "$queries/artworks";
   import { api, query } from "$lib/api";
-  import {
-    fee,
-    password,
-    sighash,
-    prompt,
-    psbt,
-    user,
-    token,
-  } from "$lib/store";
-  import { requireLogin, requirePassword } from "$lib/auth";
+  import { fee, password, sighash, prompt, psbt } from "$lib/store";
+  import { requirePassword } from "$lib/auth";
   import { createTransaction } from "$queries/transactions";
   import {
     createSwap,
@@ -80,22 +72,22 @@
     units,
     sats,
     val,
+    ticker,
     tickers,
-    assetLabel,
     royaltyRecipientSystemType,
   } from "$lib/utils";
   import { ProgressLinear, RoyaltyRecipientList } from "$comp";
   import Select from "svelte-select";
   import branding from "$lib/branding";
 
-  export let artwork, default_royalty_recipients;
+  export let artwork, default_royalty_recipients, user;
 
   let input;
   let initialized;
-  let focus = (i) => i && tick().then(() => input && input.focus());
+  let focus = (i) => browser && i && tick().then(() => input && input.focus());
   $: focus(initialized);
 
-  let loading = true;
+  let loading;
   let list_price,
     royalty_value,
     start_date,
@@ -106,76 +98,60 @@
     auction_underway,
     multi_royalty_recipients_enabled,
     royalty_recipients;
-  $: setup($token);
 
   let reserve_price;
 
-  let setup = async (t) => {
-    if (!t) return;
+  if (!artwork.asking_asset) artwork.asking_asset = btc;
+  auction_enabled =
+    auction_enabled ||
+    compareAsc(parseISO(artwork.auction_end), new Date()) === 1;
 
-    try {
-      if (!artwork.asking_asset) artwork.asking_asset = btc;
-      auction_enabled =
-        auction_enabled ||
-        compareAsc(parseISO(artwork.auction_end), new Date()) === 1;
+  let start, end;
+  if (artwork.auction_start) {
+    start = parseISO(artwork.auction_start);
+    start_date = format(start, "yyyy-MM-dd");
+    start_time = format(start, "HH:mm");
+  }
 
-      let start, end;
-      if (artwork.auction_start) {
-        start = parseISO(artwork.auction_start);
-        start_date = format(start, "yyyy-MM-dd");
-        start_time = format(start, "HH:mm");
-      }
+  if (artwork.auction_end) {
+    end = parseISO(artwork.auction_end);
+    end_date = format(end, "yyyy-MM-dd");
+    end_time = format(end, "HH:mm");
+  }
 
-      if (artwork.auction_end) {
-        end = parseISO(artwork.auction_end);
-        end_date = format(end, "yyyy-MM-dd");
-        end_time = format(end, "HH:mm");
-      }
+  auction_underway =
+    auction_enabled &&
+    isWithinInterval(new Date(), {
+      start,
+      end,
+    });
 
-      auction_underway =
-        auction_enabled &&
-        isWithinInterval(new Date(), {
-          start,
-          end,
+  if (default_royalty_recipients && default_royalty_recipients.length) {
+    for (let index = 0; index < default_royalty_recipients.length; index++) {
+      const { address, amount, name } = default_royalty_recipients[index];
+      if (!artwork.royalty_recipients.find((e) => e.address === address)) {
+        artwork.royalty_recipients.push({
+          address,
+          amount,
+          name,
+          type: royaltyRecipientSystemType,
         });
-
-      if (default_royalty_recipients && default_royalty_recipients.length) {
-        for (
-          let index = 0;
-          index < default_royalty_recipients.length;
-          index++
-        ) {
-          const { address, amount, name } = default_royalty_recipients[index];
-          if (!artwork.royalty_recipients.find((e) => e.address === address)) {
-            artwork.royalty_recipients.push({
-              address,
-              amount,
-              name,
-              type: royaltyRecipientSystemType,
-            });
-          }
-        }
       }
-
-      royalty_recipients = artwork.royalty_recipients;
-
-      if (!list_price && artwork.list_price)
-        list_price = val(artwork.asking_asset, artwork.list_price);
-      if (!royalty_value)
-        royalty_value = royalty_recipients.reduce(
-          (a, b) => a + (b["amount"] || 0),
-          0
-        );
-      multi_royalty_recipients_enabled = !!royalty_value;
-      if (!reserve_price && artwork.reserve_price)
-        reserve_price = val(artwork.asking_asset, artwork.reserve_price);
-    } catch (e) {
-      err(e);
     }
+  }
 
-    initialized = true;
-    loading = false;
-  };
+  royalty_recipients = artwork.royalty_recipients;
+
+  if (!list_price && artwork.list_price)
+    list_price = val(artwork.asking_asset, artwork.list_price);
+  if (!royalty_value)
+    royalty_value = royalty_recipients.reduce(
+      (a, b) => a + (b["amount"] || 0),
+      0
+    );
+  multi_royalty_recipients_enabled = !!royalty_value;
+  if (!reserve_price && artwork.reserve_price)
+    reserve_price = val(artwork.asking_asset, artwork.reserve_price);
 
   const spendPreviousSwap = async () => {
     if (
@@ -279,8 +255,10 @@
       await requirePassword();
 
       let base64, tx;
-      if (royalty_value) {
-        tx = await signOver(artwork, tx);
+
+      if (artwork.held === "multisig") {
+        tx = await signOver(artwork);
+        await tick();
         artwork.auction_tx = $psbt.toBase64();
       } else {
         $psbt = await sendToMultisig(artwork);
@@ -289,6 +267,7 @@
         tx = $psbt.extractTransaction();
 
         tx = await signOver(artwork, tx);
+        await tick();
         artwork.auction_tx = $psbt.toBase64();
 
         artwork.auction_release_tx = (
@@ -310,6 +289,7 @@
       if (base64) $psbt = Psbt.fromBase64(base64);
     }
 
+    artwork.held = "multisig";
     artwork.auction_start = start;
     artwork.auction_end = end;
   };
@@ -339,6 +319,8 @@
 
     stale = true;
 
+    artwork.held = "multisig";
+
     info("Royalties activated!");
   };
 
@@ -362,6 +344,7 @@
         auction_tx,
         bid_increment,
         extension_interval,
+        held,
         list_price_tx,
         max_extensions,
       } = artwork;
@@ -378,6 +361,7 @@
           auction_tx,
           bid_increment,
           extension_interval,
+          held,
           list_price: sats(artwork.asking_asset, list_price),
           list_price_tx,
           max_extensions,
@@ -421,7 +405,6 @@
   $: listingCurrencies = artwork.transferred_at
     ? Object.keys(tickers)
     : [...Object.keys(tickers), undefined];
-
 </script>
 
 <style>
@@ -509,19 +492,19 @@
         <div class="flex flex-col mt-4">
           <p>Listing currency</p>
           <div class="flex flex-wrap">
-            {#each listingCurrencies as asset}
-              <label for={asset} class="ml-2 mr-6 flex items-center">
+            {#each listingCurrencies as c}
+              <label for={c} class="ml-2 mr-6 flex items-center">
                 <input
-                  id={asset}
+                  id={c}
                   class="form-radio h-6 w-6 mt-4 mr-2"
                   type="radio"
-                  name={asset}
-                  value={asset}
-                  bind:group={artwork.asking_asset}
+                  name={c}
+                  value={c}
+                  bind:group={artwork.asking_c}
                   on:change={clearPrice}
                   disabled={auction_underway} />
                 <p class="mb-2 whitespace-nowrap">
-                  {asset ? assetLabel(asset) : 'Unlisted'}
+                  {c ? ticker(c) : 'Unlisted'}
                 </p>
               </label>
             {/each}
@@ -557,11 +540,11 @@
                 disabled={auction_underway} />
               <div
                 class="absolute inset-y-0 right-0 flex items-center mr-2 mt-4">
-                {assetLabel(artwork.asking_asset)}
+                {ticker(artwork.asking_asset)}
               </div>
             </div>
           </div>
-          {#if $user.id === artwork.artist_id}
+          {#if $session.user.id === artwork.artist_id}
             <div class="flex w-full sm:w-3/4 mb-4">
               <div class="relative mt-1 rounded-md w-2/3 mr-6">
                 <div class="auction-toggle">
@@ -684,7 +667,7 @@
                         disabled={auction_underway} />
                       <div
                         class="absolute inset-y-0 right-0 flex items-center mr-2 mt-8">
-                        {assetLabel(artwork.asking_asset)}
+                        {ticker(artwork.asking_asset)}
                       </div>
                     </label>
                   </div>
