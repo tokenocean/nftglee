@@ -78,6 +78,7 @@ services:
       VIRTUAL_HOST: nftglee.tokenocean.io
       VIRTUAL_PORT: 8091
       VIRTUAL_PATH: "/api/"
+      VIRTUAL_DEST: "/"
     volumes:
       - ./custom:/opt/src/hasura/app/custom
       - ${STORAGE_DIR}:/export
