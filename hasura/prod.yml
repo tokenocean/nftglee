@@ -6,8 +6,8 @@ services:
     environment:
       HASURA_GRAPHQL_ADMIN_SECRET: "${HASURA_GRAPHQL_ADMIN_SECRET}"
       HASURA_URL: "${HASURA_URL}"
-      PROJECT_NAME: "tokenocean-nftglee"
-      ENV_NAME: "staging"
+      PROJECT_NAME: "${PROJECT_NAME}"
+      ENV_NAME: "${ENV_NAME}"
     restart: on-failure
   nginx-proxy:
     image: nginxproxy/nginx-proxy
