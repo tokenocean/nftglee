@@ -113,7 +113,7 @@ services:
       HASURA_GRAPHQL_UNAUTHORIZED_ROLE: "anonymous"
       VIRTUAL_HOST: nftglee.tokenocean.io
       VIRTUAL_PORT: 8080
-      VIRTUAL_PATH: "~^/(v1|v2|console)/"
+      VIRTUAL_PATH: "~^/(v1|v2|console)"
   hbp:
     container_name: hbp
     image: nhost/hasura-backend-plus:v2.2.3
