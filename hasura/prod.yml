@@ -13,7 +13,7 @@ services:
     image: nginxproxy/nginx-proxy
     container_name: nginx-proxy
     environment:
-      - DEFAULT_EMAIL=abdullah@autonomoustech.ca
+      - DEFAULT_EMAIL=${DEFAULT_EMAIL}
     ports:
       - "80:80"
       - "443:443"
@@ -41,11 +41,11 @@ services:
     ports:
       - "3000:3000"
     environment:
-      VIRTUAL_HOST: nftglee.tokenocean.io
+      VIRTUAL_HOST: "${VIRTUAL_HOST}"
       VIRTUAL_PORT: 3000
       VIRTUAL_PATH: "/"
-      LETSENCRYPT_HOST: nftglee.tokenocean.io
-      LETSENCRYPT_EMAIL: abdullah@autonomoustech.ca
+      LETSENCRYPT_HOST: "${LETSENCRYPT_HOST}"
+      LETSENCRYPT_EMAIL: "${DEFAULT_EMAIL}"
   lapp:
     depends_on:
       - hbp
