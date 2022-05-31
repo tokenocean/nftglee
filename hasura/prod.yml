@@ -9,6 +9,29 @@ services:
       PROJECT_NAME: "tokenocean-nftglee"
       ENV_NAME: "staging"
     restart: on-failure
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy
+    container_name: nginx-proxy
+    environment:
+      - DEFAULT_EMAIL=abdullah@autonomoustech.ca
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - conf:/etc/nginx/conf.d
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - certs:/etc/nginx/certs:ro
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+  acme-companion:
+    image: nginxproxy/acme-companion
+    container_name: nginx-proxy-acme
+    volumes_from:
+      - nginx-proxy
+    volumes:
+      - certs:/etc/nginx/certs:rw
+      - acme:/etc/acme.sh
+      - /var/run/docker.sock:/var/run/docker.sock:ro
   ui:
     depends_on:
       - lapp
@@ -17,6 +40,12 @@ services:
     restart: on-failure
     ports:
       - "3000:3000"
+    environment:
+      VIRTUAL_HOST: nftglee.tokenocean.io
+      VIRTUAL_PORT: 3000
+      VIRTUAL_PATH: "/"
+      LETSENCRYPT_HOST: nftglee.tokenocean.io
+      LETSENCRYPT_EMAIL: abdullah@autonomoustech.ca
   lapp:
     depends_on:
       - hbp
@@ -46,6 +75,9 @@ services:
       SMTP_PASS: "${SMTP_PASS}"
       SMTP_SENDER: "${SMTP_SENDER}"
       SMTP_SECURE: "true"
+      VIRTUAL_HOST: nftglee.tokenocean.io
+      VIRTUAL_PORT: 8091
+      VIRTUAL_PATH: "/api/"
     volumes:
       - ./custom:/opt/src/hasura/app/custom
       - ${STORAGE_DIR}:/export
@@ -79,6 +111,9 @@ services:
       HASURA_GRAPHQL_JWT_SECRET: "${HASURA_GRAPHQL_JWT_SECRET}"
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
       HASURA_GRAPHQL_UNAUTHORIZED_ROLE: "anonymous"
+      VIRTUAL_HOST: nftglee.tokenocean.io
+      VIRTUAL_PORT: 8080
+      VIRTUAL_PATH: "~^/(v1|v2|console)/"
   hbp:
     container_name: hbp
     image: nhost/hasura-backend-plus:v2.2.3
@@ -116,3 +151,9 @@ services:
     volumes:
       - ${IPFS_DATA}:/data/ipfs
       - ${STORAGE_DIR}:/export
+volumes:
+  conf:
+  vhost:
+  html:
+  certs:
+  acme:
