@@ -147,7 +147,6 @@ insert_permissions:
         - owner_id
         - reserve_price
         - slug
-        - ticker
         - title
       backend_only: false
 select_permissions:
@@ -183,7 +182,6 @@ select_permissions:
         - owner_id
         - reserve_price
         - slug
-        - ticker
         - title
         - transferred_at
         - views
@@ -237,7 +235,6 @@ select_permissions:
         - owner_id
         - reserve_price
         - slug
-        - ticker
         - title
         - transferred_at
         - views
