@@ -72,7 +72,6 @@ export const fields = `
   slug
   is_physical
   instagram
-  ticker
   views
   transferred_at
   owner {
