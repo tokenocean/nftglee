@@ -212,7 +212,7 @@
         <div>Back</div>
       </div>
     </a>
-    <h2>Submit artwork</h2>
+    <h2 class="mb-2">Submit artwork</h2>
     <div class="flex flex-wrap flex-col-reverse lg:flex-row">
       <div class="w-full lg:w-1/2 lg:pr-10">
         <div class:invisible={!loading}>

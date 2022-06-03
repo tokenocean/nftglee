@@ -25,7 +25,7 @@
   import { faTwitter, faInstagram } from "@fortawesome/free-brands-svg-icons";
   import { page } from "$app/stores";
   import { onMount } from "svelte";
-  import { user, token } from "$lib/store";
+  import { artworksLimit, user, token } from "$lib/store";
   import { err, goto } from "$lib/utils";
   import { Avatar, Card, Offers, ProgressLinear } from "$comp";
   import { createFollow, deleteFollow } from "$queries/follows";
